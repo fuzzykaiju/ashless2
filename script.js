@@ -17,8 +17,6 @@ class AshlessTrackerV2 {
     initializeElements() {
         // Main UI elements
         this.entriesTable = document.getElementById('entriesTable');
-        this.addPreviousDayBtn = document.getElementById('addPreviousDay');
-        this.addPreviousBtn = document.querySelector('.add-previous-btn');
         
         // Modals
         this.settingsModal = document.getElementById('settingsModal');
@@ -36,7 +34,6 @@ class AshlessTrackerV2 {
         // Buttons
         this.menuToggle = document.getElementById('menuToggle');
         this.closeMenu = document.getElementById('closeMenu');
-        this.addPreviousBtn = document.querySelector('.add-previous-btn');
         
         // Settings elements
         this.currencyInput = document.getElementById('currency');
@@ -44,6 +41,7 @@ class AshlessTrackerV2 {
         this.timezoneInput = document.getElementById('timezone');
         this.saveSettingsBtn = document.getElementById('saveSettings');
         this.currencySymbolElement = document.getElementById('currencySymbol');
+        this.settingsTitle = document.getElementById('settingsTitle');
         
         // Create today modal
         this.createTodayTitle = document.getElementById('createTodayTitle');
@@ -108,9 +106,6 @@ class AshlessTrackerV2 {
         this.closeMenu.addEventListener('click', () => this.closeMenu());
         this.menuOverlay.addEventListener('click', () => this.closeMenu());
         
-        // Add previous day
-        this.addPreviousBtn.addEventListener('click', () => this.addPreviousDay());
-        
         // Settings
         this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
         this.currencyInput.addEventListener('change', () => this.updateCurrencyPreview());
@@ -123,14 +118,14 @@ class AshlessTrackerV2 {
         // Add craving modal
         document.querySelector('.close-craving').addEventListener('click', () => this.closeAddCravingModal());
         this.saveCravingBtn.addEventListener('click', () => this.saveCraving());
-        this.cravingHH.addEventListener('input', () => this.validateTimeInput(this.cravingHH, this.cravingMM));
-        this.cravingMM.addEventListener('input', () => this.validateTimeInput(this.cravingHH, this.cravingMM));
+        this.cravingHH.addEventListener('input', (e) => this.handleTimeInput(e, this.cravingHH, this.cravingMM));
+        this.cravingMM.addEventListener('input', (e) => this.handleTimeInput(e, this.cravingHH, this.cravingMM));
         
         // Add smoke modal
         document.querySelector('.close-smoke').addEventListener('click', () => this.closeAddSmokeModal());
         this.saveSmokeBtn.addEventListener('click', () => this.saveSmoke());
-        this.smokeHH.addEventListener('input', () => this.validateTimeInput(this.smokeHH, this.smokeMM));
-        this.smokeMM.addEventListener('input', () => this.validateTimeInput(this.smokeHH, this.smokeMM));
+        this.smokeHH.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
+        this.smokeMM.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
         
         // Number buttons
         document.querySelectorAll('.number-btn').forEach(btn => {
@@ -213,18 +208,33 @@ class AshlessTrackerV2 {
             return;
         }
         
-        this.settings = {
-            currency,
-            cigarettePrice: price,
-            timezone,
-            setupDate: new Date().toISOString()
-        };
-        
-        localStorage.setItem('ashless_v2_settings', JSON.stringify(this.settings));
-        this.settingsModal.style.display = 'none';
-        
-        // Show create today modal
-        this.showCreateTodayModal();
+        if (!this.settings) {
+            // First time setup
+            this.settings = {
+                currency,
+                cigarettePrice: price,
+                timezone,
+                setupDate: new Date().toISOString()
+            };
+            
+            localStorage.setItem('ashless_v2_settings', JSON.stringify(this.settings));
+            this.settingsModal.style.display = 'none';
+            
+            // Show create today modal
+            this.showCreateTodayModal();
+        } else {
+            // Update only price
+            this.settings.cigarettePrice = price;
+            localStorage.setItem('ashless_v2_settings', JSON.stringify(this.settings));
+            
+            alert('Price updated successfully! New entries will use this price.');
+            this.settingsModal.style.display = 'none';
+        }
+    }
+    
+    updateCurrencyPreview() {
+        const selectedCurrency = this.currencyInput.value;
+        this.currencySymbolElement.textContent = selectedCurrency;
     }
     
     showCreateTodayModal() {
@@ -252,15 +262,6 @@ class AshlessTrackerV2 {
         
         this.createTodayModal.style.display = 'none';
         this.loadEntries();
-        
-        // Schedule next day's entry creation
-        this.scheduleNextDayEntry();
-    }
-    
-    scheduleNextDayEntry() {
-        // This is a simplified version - in production, you'd use service workers
-        // or check on each app load
-        console.log('Next day entry will be checked on app load');
     }
     
     checkTodaysEntry() {
@@ -316,9 +317,12 @@ class AshlessTrackerV2 {
     addPreviousDay() {
         if (this.entries.length === 0) return;
         
-        // Find the most recent date
-        const latestEntry = this.entries[0]; // Entries are sorted newest first
-        const [day, month, year] = latestEntry.date.split('-').map(Number);
+        // Find the oldest date (last in array since sorted newest first)
+        const entriesCopy = [...this.entries];
+        entriesCopy.sort((a, b) => this.compareDates(a.date, b.date)); // Sort oldest first
+        const oldestEntry = entriesCopy[0];
+        
+        const [day, month, year] = oldestEntry.date.split('-').map(Number);
         
         // Calculate previous day
         const date = new Date(2000 + year, month - 1, day);
@@ -342,7 +346,7 @@ class AshlessTrackerV2 {
             notes: ''
         };
         
-        this.entries.unshift(entry); // Add to beginning
+        this.entries.push(entry);
         this.entries.sort((a, b) => this.compareDates(b.date, a.date)); // Sort newest first
         
         localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
@@ -368,27 +372,25 @@ class AshlessTrackerV2 {
                     <p>No entries yet. Setting up your tracker...</p>
                 </div>
             `;
-            this.addPreviousDayBtn.style.display = 'none';
             return;
         }
         
         // Sort entries newest first
         this.entries.sort((a, b) => this.compareDates(b.date, a.date));
         
-        this.entries.forEach((entry, index) => {
+        this.entries.forEach((entry) => {
             const row = document.createElement('div');
             row.className = 'entry-row';
             
             const dateParts = this.formatDateForDisplay(entry.date);
             const cravingsCount = entry.cravings.length;
             const smokedCount = entry.smoked.reduce((sum, smoke) => sum + smoke.count, 0);
-            const moneySpent = smokedCount * this.settings.cigarettePrice;
             
-            // Calculate intensity distribution for display
-            const intensityCounts = { low: 0, medium: 0, high: 0 };
-            entry.cravings.forEach(craving => {
-                intensityCounts[craving.intensity]++;
-            });
+            // Calculate money spent with entry-specific prices
+            const moneySpent = entry.smoked.reduce((sum, smoke) => {
+                const price = smoke.pricePerCigarette || this.settings.cigarettePrice;
+                return sum + (smoke.count * price);
+            }, 0);
             
             row.innerHTML = `
                 <div class="entry-cell date-cell">
@@ -396,18 +398,15 @@ class AshlessTrackerV2 {
                     <div class="date-month">${dateParts.month}</div>
                     <div class="date-year">${dateParts.year}</div>
                 </div>
-                <div class="entry-cell clickable-cell craving-cell" data-date="${entry.date}" data-type="craving">
-                    <span class="craving-count">${cravingsCount}</span>
-                    <div class="intensity-indicator">
-                        ${intensityCounts.low > 0 ? '<span class="intensity-dot intensity-low"></span>' : ''}
-                        ${intensityCounts.medium > 0 ? '<span class="intensity-dot intensity-medium"></span>' : ''}
-                        ${intensityCounts.high > 0 ? '<span class="intensity-dot intensity-high"></span>' : ''}
-                    </div>
+                <div class="entry-cell clickable-cell ${cravingsCount === 0 ? 'value-zero' : 'value-positive'}" 
+                     data-date="${entry.date}" data-type="craving">
+                    ${cravingsCount}
                 </div>
-                <div class="entry-cell clickable-cell" data-date="${entry.date}" data-type="smoke">
+                <div class="entry-cell clickable-cell ${smokedCount === 0 ? 'value-zero' : 'value-positive'}" 
+                     data-date="${entry.date}" data-type="smoke">
                     ${smokedCount}
                 </div>
-                <div class="entry-cell">
+                <div class="entry-cell ${smokedCount === 0 ? 'value-zero' : 'value-positive'}">
                     ${this.settings.currency}${moneySpent.toFixed(2)}
                 </div>
                 <div class="entry-cell">
@@ -421,14 +420,45 @@ class AshlessTrackerV2 {
             this.entriesTable.appendChild(row);
         });
         
-        // Add event listeners to the new elements
+        // Add the "Add previous day" row
+        this.addPreviousDayRow();
+        
+        // Attach event listeners to the new elements
         this.attachRowEventListeners();
-        this.addPreviousDayBtn.style.display = 'block';
+    }
+    
+    addPreviousDayRow() {
+        const addRow = document.createElement('div');
+        addRow.className = 'add-previous-row';
+        addRow.innerHTML = `
+            <div class="add-previous-content">
+                <button class="add-previous-btn">
+                    <i class="fas fa-plus-circle"></i>
+                </button>
+                <span class="add-previous-text">Add entry for previous day</span>
+            </div>
+        `;
+        
+        this.entriesTable.appendChild(addRow);
+        
+        // Add help text row
+        const helpRow = document.createElement('div');
+        helpRow.className = 'help-row';
+        helpRow.innerHTML = `
+            <p>• Tap 😩 or 🚬 in a row to add craving/cigarette</p>
+            <p>• Tap 𝒊 to view day's timeline & notes</p>
+            <p>• Tap ⋮ to edit/delete entries</p>
+        `;
+        
+        this.entriesTable.appendChild(helpRow);
+        
+        // Add event listener to the plus button
+        addRow.querySelector('.add-previous-btn').addEventListener('click', () => this.addPreviousDay());
     }
     
     attachRowEventListeners() {
         // Craving cells
-        document.querySelectorAll('.craving-cell').forEach(cell => {
+        document.querySelectorAll('.entry-cell[data-type="craving"]').forEach(cell => {
             cell.addEventListener('click', (e) => {
                 const date = e.currentTarget.dataset.date;
                 this.openAddCravingModal(date);
@@ -489,17 +519,6 @@ class AshlessTrackerV2 {
             });
         });
         
-        // Add time input validation
-        this.cravingHH.addEventListener('input', () => {
-            this.validateTimeInput(this.cravingHH, this.cravingMM);
-            this.checkCravingSaveButton();
-        });
-        
-        this.cravingMM.addEventListener('input', () => {
-            this.validateTimeInput(this.cravingHH, this.cravingMM);
-            this.checkCravingSaveButton();
-        });
-        
         this.addCravingModal.style.display = 'block';
     }
     
@@ -549,18 +568,17 @@ class AshlessTrackerV2 {
                 let minutes = targetTime.getMinutes();
                 
                 // Handle date boundary (if time goes to previous day)
-                if (defaultTime.minutes > 0 && targetTime.getDate() !== now.getDate()) {
-                    // For simplicity, we'll just use current time
-                    hours = now.getHours();
-                    minutes = now.getMinutes();
-                }
-                
-                // Set the custom time inputs
                 const hhInput = type === 'craving' ? this.cravingHH : this.smokeHH;
                 const mmInput = type === 'craving' ? this.cravingMM : this.smokeMM;
                 
-                hhInput.value = String(hours).padStart(2, '0');
-                mmInput.value = String(minutes).padStart(2, '0');
+                if (defaultTime.minutes > 0 && targetTime.getDate() !== now.getDate()) {
+                    // If crossing midnight, don't auto-fill (let user enter manually)
+                    hhInput.value = '';
+                    mmInput.value = '';
+                } else {
+                    hhInput.value = String(hours).padStart(2, '0');
+                    mmInput.value = String(minutes).padStart(2, '0');
+                }
                 
                 // Validate
                 this.validateTimeInput(hhInput, mmInput);
@@ -577,6 +595,34 @@ class AshlessTrackerV2 {
         });
     }
     
+    handleTimeInput(event, hhInput, mmInput) {
+        // Get the input value
+        let value = event.target.value.replace(/[^0-9]/g, '');
+        
+        // Limit to 2 digits
+        if (value.length > 2) {
+            value = value.slice(0, 2);
+        }
+        
+        // Update the input
+        event.target.value = value;
+        
+        // Auto-advance when 2 digits are entered
+        if (value.length === 2 && event.target === hhInput) {
+            mmInput.focus();
+        }
+        
+        // Validate
+        this.validateTimeInput(hhInput, mmInput);
+        
+        // Check save button based on which modal is open
+        if (hhInput === this.cravingHH) {
+            this.checkCravingSaveButton();
+        } else if (hhInput === this.smokeHH) {
+            this.checkSmokeSaveButton();
+        }
+    }
+    
     validateTimeInput(hhInput, mmInput) {
         let hh = parseInt(hhInput.value) || 0;
         let mm = parseInt(mmInput.value) || 0;
@@ -587,34 +633,38 @@ class AshlessTrackerV2 {
         if (mm < 0) mm = 0;
         if (mm > 59) mm = 59;
         
-        // Update values
-        hhInput.value = hh > 0 ? String(hh).padStart(2, '0') : '';
-        mmInput.value = mm > 0 ? String(mm).padStart(2, '0') : '';
+        // Update values with leading zeros
+        if (hhInput.value) {
+            hhInput.value = String(hh).padStart(2, '0');
+        }
+        if (mmInput.value) {
+            mmInput.value = String(mm).padStart(2, '0');
+        }
         
-        // Add invalid class if empty
-        if (!hhInput.value) {
+        // Add invalid class if empty or invalid
+        if (!hhInput.value || hh < 0 || hh > 23) {
             hhInput.classList.add('invalid');
         } else {
             hhInput.classList.remove('invalid');
         }
         
-        if (!mmInput.value) {
+        if (!mmInput.value || mm < 0 || mm > 59) {
             mmInput.classList.add('invalid');
         } else {
             mmInput.classList.remove('invalid');
         }
         
-        return hhInput.value && mmInput.value;
+        return hhInput.value && mmInput.value && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
     }
     
     checkCravingSaveButton() {
-        const timeValid = this.cravingHH.value && this.cravingMM.value;
+        const timeValid = this.validateTimeInput(this.cravingHH, this.cravingMM);
         const intensitySelected = document.querySelector('.intensity-btn.selected');
         this.saveCravingBtn.disabled = !(timeValid && intensitySelected);
     }
     
     checkSmokeSaveButton() {
-        const timeValid = this.smokeHH.value && this.smokeMM.value;
+        const timeValid = this.validateTimeInput(this.smokeHH, this.smokeMM);
         const countValid = parseInt(this.cigaretteCountInput.value) > 0;
         this.saveSmokeBtn.disabled = !(timeValid && countValid);
     }
@@ -684,15 +734,8 @@ class AshlessTrackerV2 {
         }
         
         // Add time input validation
-        this.smokeHH.addEventListener('input', () => {
-            this.validateTimeInput(this.smokeHH, this.smokeMM);
-            this.checkSmokeSaveButton();
-        });
-        
-        this.smokeMM.addEventListener('input', () => {
-            this.validateTimeInput(this.smokeHH, this.smokeMM);
-            this.checkSmokeSaveButton();
-        });
+        this.smokeHH.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
+        this.smokeMM.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
         
         // Add count input validation
         this.cigaretteCountInput.addEventListener('input', () => {
@@ -738,10 +781,11 @@ class AshlessTrackerV2 {
             return;
         }
         
-        // Add smoke to entry
+        // Add smoke to entry with current price
         this.entries[entryIndex].smoked.push({
             time,
-            count
+            count,
+            pricePerCigarette: this.settings.cigarettePrice
         });
         
         // Sort smoked entries by time
@@ -889,104 +933,26 @@ class AshlessTrackerV2 {
         this.cravingsList.innerHTML = '';
         
         cravings.forEach((craving, index) => {
-            const cravingEl = document.createElement('div');
-            cravingEl.className = 'edit-item';
-            cravingEl.innerHTML = `
-                <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="${index}">
-                <span>${index + 1}.</span>
-                <div class="edit-time-input">
-                    <input type="text" class="edit-hh" value="${craving.time.split(':')[0]}" maxlength="2" placeholder="HH">
-                    <span>:</span>
-                    <input type="text" class="edit-mm" value="${craving.time.split(':')[1]}" maxlength="2" placeholder="MM">
-                </div>
-                <div class="edit-intensity-selector">
-                    <button class="edit-intensity-btn low ${craving.intensity === 'low' ? 'selected' : ''}" data-intensity="low">🟢</button>
-                    <button class="edit-intensity-btn medium ${craving.intensity === 'medium' ? 'selected' : ''}" data-intensity="medium">🟡</button>
-                    <button class="edit-intensity-btn high ${craving.intensity === 'high' ? 'selected' : ''}" data-intensity="high">🔴</button>
-                </div>
-            `;
-            
-            // Add event listeners
-            const hhInput = cravingEl.querySelector('.edit-hh');
-            const mmInput = cravingEl.querySelector('.edit-mm');
-            const intensityBtns = cravingEl.querySelectorAll('.edit-intensity-btn');
-            
-            hhInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
-            mmInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
-            
-            intensityBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    intensityBtns.forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                });
-            });
-            
+            const cravingEl = this.createCravingEditItem(craving, index + 1);
             this.cravingsList.appendChild(cravingEl);
         });
     }
     
-    displaySmokedForEdit(smoked) {
-        this.smokedList.innerHTML = '';
-        
-        smoked.forEach((smoke, index) => {
-            const smokeEl = document.createElement('div');
-            smokeEl.className = 'edit-item';
-            smokeEl.innerHTML = `
-                <input type="checkbox" class="edit-checkbox smoke-checkbox" data-index="${index}">
-                <span>${index + 1}.</span>
-                <div class="edit-time-input">
-                    <input type="text" class="edit-hh" value="${smoke.time.split(':')[0]}" maxlength="2" placeholder="HH">
-                    <span>:</span>
-                    <input type="text" class="edit-mm" value="${smoke.time.split(':')[1]}" maxlength="2" placeholder="MM">
-                </div>
-                <div class="edit-count-input">
-                    <button type="button" class="number-btn minus small">−</button>
-                    <input type="number" class="edit-count" value="${smoke.count}" min="1">
-                    <button type="button" class="number-btn plus small">+</button>
-                </div>
-            `;
-            
-            // Add event listeners
-            const hhInput = smokeEl.querySelector('.edit-hh');
-            const mmInput = smokeEl.querySelector('.edit-mm');
-            const countInput = smokeEl.querySelector('.edit-count');
-            const minusBtn = smokeEl.querySelector('.minus');
-            const plusBtn = smokeEl.querySelector('.plus');
-            
-            hhInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
-            mmInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
-            
-            minusBtn.addEventListener('click', () => {
-                let value = parseInt(countInput.value) || 1;
-                if (value > 1) value--;
-                countInput.value = value;
-            });
-            
-            plusBtn.addEventListener('click', () => {
-                let value = parseInt(countInput.value) || 1;
-                value++;
-                countInput.value = value;
-            });
-            
-            this.smokedList.appendChild(smokeEl);
-        });
-    }
-    
-    addEmptyCravingEdit() {
+    createCravingEditItem(craving, number) {
         const cravingEl = document.createElement('div');
         cravingEl.className = 'edit-item';
         cravingEl.innerHTML = `
-            <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="new">
-            <span>New.</span>
+            <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="${number - 1}">
+            <span>${number}.</span>
             <div class="edit-time-input">
-                <input type="text" class="edit-hh" maxlength="2" placeholder="HH">
+                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-hh" value="${craving.time.split(':')[0]}" maxlength="2" placeholder="HH">
                 <span>:</span>
-                <input type="text" class="edit-mm" maxlength="2" placeholder="MM">
+                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-mm" value="${craving.time.split(':')[1]}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-intensity-selector">
-                <button class="edit-intensity-btn low" data-intensity="low">🟢</button>
-                <button class="edit-intensity-btn medium" data-intensity="medium">🟡</button>
-                <button class="edit-intensity-btn high" data-intensity="high">🔴</button>
+                <button class="edit-intensity-btn low ${craving.intensity === 'low' ? 'selected' : ''}" data-intensity="low">🟢</button>
+                <button class="edit-intensity-btn medium ${craving.intensity === 'medium' ? 'selected' : ''}" data-intensity="medium">🟡</button>
+                <button class="edit-intensity-btn high ${craving.intensity === 'high' ? 'selected' : ''}" data-intensity="high">🔴</button>
             </div>
         `;
         
@@ -994,9 +960,10 @@ class AshlessTrackerV2 {
         const hhInput = cravingEl.querySelector('.edit-hh');
         const mmInput = cravingEl.querySelector('.edit-mm');
         const intensityBtns = cravingEl.querySelectorAll('.edit-intensity-btn');
+        const checkbox = cravingEl.querySelector('.edit-checkbox');
         
-        hhInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
-        mmInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
+        hhInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
+        mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
         
         intensityBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1005,23 +972,34 @@ class AshlessTrackerV2 {
             });
         });
         
-        this.cravingsList.appendChild(cravingEl);
+        checkbox.addEventListener('change', () => this.updateDeleteButtonsState());
+        
+        return cravingEl;
     }
     
-    addEmptySmokeEdit() {
+    displaySmokedForEdit(smoked) {
+        this.smokedList.innerHTML = '';
+        
+        smoked.forEach((smoke, index) => {
+            const smokeEl = this.createSmokeEditItem(smoke, index + 1);
+            this.smokedList.appendChild(smokeEl);
+        });
+    }
+    
+    createSmokeEditItem(smoke, number) {
         const smokeEl = document.createElement('div');
         smokeEl.className = 'edit-item';
         smokeEl.innerHTML = `
-            <input type="checkbox" class="edit-checkbox smoke-checkbox" data-index="new">
-            <span>New.</span>
+            <input type="checkbox" class="edit-checkbox smoke-checkbox" data-index="${number - 1}">
+            <span>${number}.</span>
             <div class="edit-time-input">
-                <input type="text" class="edit-hh" maxlength="2" placeholder="HH">
+                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-hh" value="${smoke.time.split(':')[0]}" maxlength="2" placeholder="HH">
                 <span>:</span>
-                <input type="text" class="edit-mm" maxlength="2" placeholder="MM">
+                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-mm" value="${smoke.time.split(':')[1]}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-count-input">
                 <button type="button" class="number-btn minus small">−</button>
-                <input type="number" class="edit-count" value="1" min="1">
+                <input type="number" class="edit-count" value="${smoke.count}" min="1">
                 <button type="button" class="number-btn plus small">+</button>
             </div>
         `;
@@ -1032,9 +1010,10 @@ class AshlessTrackerV2 {
         const countInput = smokeEl.querySelector('.edit-count');
         const minusBtn = smokeEl.querySelector('.minus');
         const plusBtn = smokeEl.querySelector('.plus');
+        const checkbox = smokeEl.querySelector('.edit-checkbox');
         
-        hhInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
-        mmInput.addEventListener('input', () => this.validateTimeInput(hhInput, mmInput));
+        hhInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
+        mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
         
         minusBtn.addEventListener('click', () => {
             let value = parseInt(countInput.value) || 1;
@@ -1048,12 +1027,28 @@ class AshlessTrackerV2 {
             countInput.value = value;
         });
         
+        checkbox.addEventListener('change', () => this.updateDeleteButtonsState());
+        
+        return smokeEl;
+    }
+    
+    addEmptyCravingEdit() {
+        const currentCount = this.cravingsList.querySelectorAll('.edit-item').length + 1;
+        const emptyCraving = { time: '', intensity: '' };
+        const cravingEl = this.createCravingEditItem(emptyCraving, currentCount);
+        this.cravingsList.appendChild(cravingEl);
+    }
+    
+    addEmptySmokeEdit() {
+        const currentCount = this.smokedList.querySelectorAll('.edit-item').length + 1;
+        const emptySmoke = { time: '', count: 1 };
+        const smokeEl = this.createSmokeEditItem(emptySmoke, currentCount);
         this.smokedList.appendChild(smokeEl);
     }
     
     deleteSelectedCravings() {
         const checkboxes = document.querySelectorAll('.craving-checkbox:checked');
-        const indices = Array.from(checkboxes).map(cb => cb.dataset.index);
+        const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
         
         if (indices.length === 0) {
             alert('Please select cravings to delete');
@@ -1068,18 +1063,20 @@ class AshlessTrackerV2 {
         if (entryIndex === -1) return;
         
         // Remove selected cravings (in reverse order to maintain indices)
-        const newCravings = this.entries[entryIndex].cravings.filter((_, index) => {
-            return !indices.includes(index.toString()) && !indices.includes('new');
+        indices.sort((a, b) => b - a).forEach(index => {
+            if (index >= 0 && index < this.entries[entryIndex].cravings.length) {
+                this.entries[entryIndex].cravings.splice(index, 1);
+            }
         });
         
-        this.entries[entryIndex].cravings = newCravings;
-        this.displayCravingsForEdit(newCravings);
+        // Re-display cravings
+        this.displayCravingsForEdit(this.entries[entryIndex].cravings);
         this.updateDeleteButtonsState();
     }
     
     deleteSelectedSmoked() {
         const checkboxes = document.querySelectorAll('.smoke-checkbox:checked');
-        const indices = Array.from(checkboxes).map(cb => cb.dataset.index);
+        const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
         
         if (indices.length === 0) {
             alert('Please select smoked entries to delete');
@@ -1094,12 +1091,14 @@ class AshlessTrackerV2 {
         if (entryIndex === -1) return;
         
         // Remove selected smoked entries (in reverse order to maintain indices)
-        const newSmoked = this.entries[entryIndex].smoked.filter((_, index) => {
-            return !indices.includes(index.toString()) && !indices.includes('new');
+        indices.sort((a, b) => b - a).forEach(index => {
+            if (index >= 0 && index < this.entries[entryIndex].smoked.length) {
+                this.entries[entryIndex].smoked.splice(index, 1);
+            }
         });
         
-        this.entries[entryIndex].smoked = newSmoked;
-        this.displaySmokedForEdit(newSmoked);
+        // Re-display smoked
+        this.displaySmokedForEdit(this.entries[entryIndex].smoked);
         this.updateDeleteButtonsState();
     }
     
@@ -1148,7 +1147,15 @@ class AshlessTrackerV2 {
                 const count = parseInt(countInput.value) || 1;
                 
                 if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time) && count > 0) {
-                    updatedSmoked.push({ time, count });
+                    // Keep original price for existing entries, use current for new ones
+                    const originalIndex = parseInt(item.querySelector('.edit-checkbox').dataset.index);
+                    let pricePerCigarette = this.settings.cigarettePrice;
+                    
+                    if (originalIndex >= 0 && originalIndex < this.entries[entryIndex].smoked.length) {
+                        pricePerCigarette = this.entries[entryIndex].smoked[originalIndex].pricePerCigarette || this.settings.cigarettePrice;
+                    }
+                    
+                    updatedSmoked.push({ time, count, pricePerCigarette });
                 }
             }
         }
@@ -1197,9 +1204,44 @@ class AshlessTrackerV2 {
         if (!this.settings) {
             this.settingsModal.style.display = 'block';
         } else {
-            alert('Settings cannot be changed after initial setup. Clear all data to change settings.');
+            // Show settings with only price editable
+            this.updateSettingsInputs();
+            this.settingsModal.style.display = 'block';
+            
+            // Disable currency and timezone, enable price
+            this.currencyInput.disabled = true;
+            this.timezoneInput.disabled = true;
+            this.cigarettePriceInput.disabled = false;
+            
+            // Update modal title and help text
+            this.settingsTitle.textContent = 'Settings (Price only)';
+            
+            const helpTexts = document.querySelectorAll('#settingsModal .help-text');
+            helpTexts[0].textContent = 'Currency cannot be changed';
+            helpTexts[1].textContent = 'Update price for new entries';
+            
+            // Remove existing price note if any
+            const existingNote = document.querySelector('#settingsModal .price-note');
+            if (existingNote) existingNote.remove();
+            
+            // Add a note about existing entries
+            const note = document.createElement('p');
+            note.className = 'help-text price-note';
+            note.textContent = 'Note: Existing entries will keep their original price';
+            note.style.color = 'var(--accent-color)';
+            note.style.marginTop = '10px';
+            this.settingsModal.querySelector('.settings-body').appendChild(note);
         }
         this.closeMenu();
+    }
+    
+    updateSettingsInputs() {
+        if (this.settings) {
+            this.currencyInput.value = this.settings.currency;
+            this.cigarettePriceInput.value = this.settings.cigarettePrice;
+            this.timezoneInput.value = this.settings.timezone;
+            this.updateCurrencyPreview();
+        }
     }
     
     openChartModal() {
@@ -1255,7 +1297,12 @@ class AshlessTrackerV2 {
         // Calculate stats
         const totalSmoked = smokedData.reduce((sum, val) => sum + val, 0);
         const totalCravings = cravingsData.reduce((sum, val) => sum + val, 0);
-        const totalMoney = totalSmoked * this.settings.cigarettePrice;
+        const totalMoney = filteredEntries.reduce((sum, entry) => {
+            return sum + entry.smoked.reduce((entrySum, smoke) => {
+                const price = smoke.pricePerCigarette || this.settings.cigarettePrice;
+                return entrySum + (smoke.count * price);
+            }, 0);
+        }, 0);
         
         this.totalSmoked.textContent = totalSmoked;
         this.totalCravings.textContent = totalCravings;
@@ -1309,8 +1356,8 @@ class AshlessTrackerV2 {
                     const timeDecimal = hours + minutes / 60;
                     
                     intensityData.push({
-                        x: entryIndex + timeDecimal / 24, // Spread within day
-                        y: entry.cravings.length, // Position at cravings count level
+                        x: entryIndex + timeDecimal / 24,
+                        y: entry.cravings.length,
                         intensity: craving.intensity
                     });
                 });
@@ -1415,7 +1462,7 @@ class AshlessTrackerV2 {
             return;
         }
         
-        const headers = ['Date', 'Time', 'Type', 'Intensity/Count', 'Notes'];
+        const headers = ['Date', 'Time', 'Type', 'Intensity/Count', 'PricePerCigarette', 'Notes'];
         const csvRows = [headers.join(',')];
         
         this.entries.forEach(entry => {
@@ -1426,6 +1473,7 @@ class AshlessTrackerV2 {
                     craving.time,
                     'Craving',
                     craving.intensity,
+                    '',
                     `"${entry.notes.replace(/"/g, '""')}"`
                 ];
                 csvRows.push(row.join(','));
@@ -1438,6 +1486,7 @@ class AshlessTrackerV2 {
                     smoke.time,
                     'Smoked',
                     smoke.count,
+                    smoke.pricePerCigarette || this.settings.cigarettePrice,
                     `"${entry.notes.replace(/"/g, '""')}"`
                 ];
                 csvRows.push(row.join(','));
@@ -1487,7 +1536,7 @@ class AshlessTrackerV2 {
                     const cols = rows[i].split(',').map(col => col.trim());
                     if (cols.length < 4) continue;
                     
-                    const [date, time, type, value, ...notesParts] = cols;
+                    const [date, time, type, value, price, ...notesParts] = cols;
                     const notes = notesParts.join(',').replace(/^"|"$/g, '');
                     
                     if (!entriesByDate[date]) {
@@ -1507,7 +1556,8 @@ class AshlessTrackerV2 {
                     } else if (type.toLowerCase() === 'smoked') {
                         entriesByDate[date].smoked.push({
                             time,
-                            count: parseInt(value) || 1
+                            count: parseInt(value) || 1,
+                            pricePerCigarette: parseFloat(price) || this.settings.cigarettePrice
                         });
                     }
                     
@@ -1552,11 +1602,6 @@ class AshlessTrackerV2 {
         if (targetId === 'cigaretteCount') {
             this.checkSmokeSaveButton();
         }
-    }
-    
-    updateCurrencyPreview() {
-        const selectedCurrency = this.currencyInput.value;
-        this.currencySymbolElement.textContent = selectedCurrency;
     }
     
     handleOutsideClick(event) {

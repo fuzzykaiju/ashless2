@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <!-- Fixed Header -->
@@ -39,26 +38,13 @@
                 <p>Loading your journey...</p>
             </div>
         </div>
-        
-        <!-- Add Previous Day Button -->
-        <div id="addPreviousDay" class="add-previous-day">
-            <button class="add-previous-btn">
-                <i class="fas fa-plus-circle"></i>
-                <span>Add entry for previous day</span>
-            </button>
-            <div class="help-text">
-                <p>• Tap 😩 or 🚬 in a row to add craving/cigarette</p>
-                <p>• Tap 𝒊 to view day's timeline & notes</p>
-                <p>• Tap ⋮ to edit/delete entries</p>
-            </div>
-        </div>
     </main>
 
     <!-- Settings Modal (First Time/Onboarding) -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Welcome to Ashless v2.0</h2>
+                <h2 id="settingsTitle">Welcome to Ashless v2.0</h2>
             </div>
             <div class="modal-body settings-body">
                 <p class="welcome-text">Set up your tracking preferences:</p>
@@ -136,9 +122,9 @@
                     <div class="custom-time-input">
                         <span>Custom Time:</span>
                         <div class="time-input-group">
-                            <input type="text" id="cravingHH" maxlength="2" placeholder="HH" pattern="[0-9]*">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" id="cravingHH" maxlength="2" placeholder="HH">
                             <span>:</span>
-                            <input type="text" id="cravingMM" maxlength="2" placeholder="MM" pattern="[0-9]*">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" id="cravingMM" maxlength="2" placeholder="MM">
                         </div>
                     </div>
                 </div>
@@ -184,9 +170,9 @@
                     <div class="custom-time-input">
                         <span>Custom Time:</span>
                         <div class="time-input-group">
-                            <input type="text" id="smokeHH" maxlength="2" placeholder="HH" pattern="[0-9]*">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" id="smokeHH" maxlength="2" placeholder="HH">
                             <span>:</span>
-                            <input type="text" id="smokeMM" maxlength="2" placeholder="MM" pattern="[0-9]*">
+                            <input type="number" pattern="[0-9]*" inputmode="numeric" id="smokeMM" maxlength="2" placeholder="MM">
                         </div>
                     </div>
                 </div>

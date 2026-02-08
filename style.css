@@ -34,7 +34,7 @@ body {
     line-height: 1.6;
     overflow-x: hidden;
     padding-top: 140px;
-    padding-bottom: 120px;
+    padding-bottom: 20px;
 }
 
 /* Fixed Header */
@@ -136,7 +136,7 @@ body {
 
 .entries-table {
     background-color: var(--dark-grey);
-    min-height: calc(100vh - 260px);
+    min-height: calc(100vh - 160px);
     padding-top: 10px;
 }
 
@@ -192,6 +192,17 @@ body {
     opacity: 0.8;
 }
 
+/* Value coloring */
+.value-zero {
+    color: var(--success-color) !important;
+    font-weight: bold;
+}
+
+.value-positive {
+    color: var(--danger-color) !important;
+    font-weight: bold;
+}
+
 /* Clickable cells */
 .clickable-cell {
     cursor: pointer;
@@ -208,40 +219,6 @@ body {
 
 .clickable-cell:active {
     transform: scale(0.95);
-}
-
-/* Craving cell with intensity indicator */
-.craving-cell {
-    position: relative;
-}
-
-.craving-count {
-    font-weight: bold;
-    margin-right: 5px;
-}
-
-.intensity-indicator {
-    display: inline-flex;
-    gap: 2px;
-    margin-left: 5px;
-}
-
-.intensity-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-}
-
-.intensity-low {
-    background-color: var(--low-intensity);
-}
-
-.intensity-medium {
-    background-color: var(--medium-intensity);
-}
-
-.intensity-high {
-    background-color: var(--high-intensity);
 }
 
 /* Info button */
@@ -279,54 +256,60 @@ body {
     background-color: rgba(255, 153, 0, 0.1);
 }
 
-/* Add Previous Day Button */
-.add-previous-day {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+/* Add Previous Day Row */
+.add-previous-row {
+    display: grid;
+    grid-template-columns: repeat(var(--column-count), 1fr);
+    padding: 15px 2px;
+    border-top: 2px solid var(--success-color);
     background-color: var(--darker-bg);
-    padding: 15px;
-    border-top: 2px solid var(--accent-color);
-    z-index: 998;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.add-previous-content {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 10px;
 }
 
 .add-previous-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-    padding: 12px;
-    background-color: var(--success-color);
-    color: white;
+    background: none;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: bold;
+    color: var(--success-color);
+    font-size: 1.2rem;
     cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 50%;
     transition: all 0.2s;
-    margin-bottom: 10px;
+    display: inline-block;
+    vertical-align: middle;
 }
 
 .add-previous-btn:hover {
-    background-color: #3d8b40;
-    transform: translateY(-2px);
+    background-color: rgba(76, 175, 80, 0.1);
+    transform: scale(1.1);
 }
 
-.add-previous-btn i {
-    font-size: 1.2rem;
+.add-previous-text {
+    color: var(--text-primary);
+    font-style: italic;
+    margin-left: 10px;
+    vertical-align: middle;
 }
 
-.help-text {
+.help-row {
+    grid-column: 1 / -1;
     text-align: center;
+    padding: 10px;
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     line-height: 1.4;
+    border-top: 1px solid var(--medium-grey);
 }
 
-.help-text p {
-    margin-bottom: 3px;
+.help-row p {
+    margin: 3px 0;
 }
 
 .empty-state {
@@ -448,6 +431,17 @@ body {
     font-size: 1rem;
     width: 90%;
     max-width: 300px;
+}
+
+/* Hide number spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
 }
 
 .form-group input:focus,
@@ -1220,7 +1214,7 @@ body {
 @media (max-width: 480px) {
     body {
         padding-top: 140px;
-        padding-bottom: 140px;
+        padding-bottom: 20px;
         font-size: 14px;
     }
     
