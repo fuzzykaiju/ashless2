@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ashless v2.0 - Quit Smoking Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Fixed Header -->
+    <header class="fixed-header">
+        <div class="header-content">
+            <div class="title-section">
+                <h1>Ashless v2.0</h1>
+                <p class="tagline">Track every craving. Every cigarette.<br>Every victory.</p>
+            </div>
+            <button id="menuToggle" class="menu-btn" aria-label="Open menu">☰</button>
+        </div>
+        
+        <!-- Table Header -->
+        <div class="table-header">
+            <div class="header-cell" data-tooltip="Date">📆</div>
+            <div class="header-cell" data-tooltip="Cravings">😩</div>
+            <div class="header-cell" data-tooltip="Cigarettes Smoked">🚬</div>
+            <div class="header-cell" data-tooltip="Money Spent">💵</div>
+            <div class="header-cell" data-tooltip="Info & Notes">𝒊</div>
+            <div class="header-cell" data-tooltip="Edit Day">⋮</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="entriesTable" class="entries-table">
+            <!-- Entries will be dynamically added here -->
+            <div class="empty-state">
+                <p>Loading your journey...</p>
+            </div>
+        </div>
+        
+        <!-- Add Previous Day Button -->
+        <div id="addPreviousDay" class="add-previous-day">
+            <button class="add-previous-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add entry for previous day</span>
+            </button>
+            <div class="help-text">
+                <p>• Tap 😩 or 🚬 in a row to add craving/cigarette</p>
+                <p>• Tap 𝒊 to view day's timeline & notes</p>
+                <p>• Tap ⋮ to edit/delete entries</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal (First Time/Onboarding) -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Welcome to Ashless v2.0</h2>
+            </div>
+            <div class="modal-body settings-body">
+                <p class="welcome-text">Set up your tracking preferences:</p>
+                
+                <div class="form-group">
+                    <label for="currency">Currency:</label>
+                    <select id="currency" class="time-select">
+                        <option value="₹">Indian Rupee (₹)</option>
+                        <option value="$">US Dollar ($)</option>
+                        <option value="€">Euro (€)</option>
+                        <option value="£">British Pound (£)</option>
+                        <option value="¥">Japanese Yen (¥)</option>
+                        <option value="₽">Russian Ruble (₽)</option>
+                        <option value="R$">Brazilian Real (R$)</option>
+                        <option value="A$">Australian Dollar (A$)</option>
+                        <option value="C$">Canadian Dollar (C$)</option>
+                        <option value="CHF">Swiss Franc (CHF)</option>
+                    </select>
+                    <p class="help-text">Currency cannot be changed after setup</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cigarettePrice">Price per cigarette:</label>
+                    <div class="currency-input">
+                        <span id="currencySymbol" class="currency-symbol">₹</span>
+                        <input type="number" id="cigarettePrice" min="0.1" step="0.1" value="20">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="timezone">Time Zone:</label>
+                    <select id="timezone" class="time-select">
+                        <!-- Timezone options will be populated by JavaScript -->
+                    </select>
+                    <p class="help-text">Timezone cannot be changed after setup</p>
+                </div>
+                
+                <div class="form-actions">
+                    <button id="saveSettings" class="save-btn">Start Tracking</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Today Modal -->
+    <div id="createTodayModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="createTodayTitle"></h2>
+            </div>
+            <div class="modal-body">
+                <p>Would you like to start tracking for today?</p>
+                <p class="help-text">A zero-entry will be created automatically at 00:00 each day.</p>
+                <div class="form-actions">
+                    <button id="createTodayYes" class="save-btn">Yes, Create Today's Entry</button>
+                    <button id="createTodayNo" class="cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Craving Modal -->
+    <div id="addCravingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="cravingTitle"></h2>
+                <button class="close-btn close-craving">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="cravingTime">Time:</label>
+                    <div id="smartTimeDefaults" class="smart-time-defaults">
+                        <!-- Smart time buttons will be added here -->
+                    </div>
+                    <div class="custom-time-input">
+                        <span>Custom Time:</span>
+                        <div class="time-input-group">
+                            <input type="text" id="cravingHH" maxlength="2" placeholder="HH" pattern="[0-9]*">
+                            <span>:</span>
+                            <input type="text" id="cravingMM" maxlength="2" placeholder="MM" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cravingIntensity">Craving Intensity:</label>
+                    <div class="intensity-selector">
+                        <button class="intensity-btn low" data-intensity="low">
+                            <span class="intensity-emoji">🟢</span>
+                            <span class="intensity-label">Low</span>
+                        </button>
+                        <button class="intensity-btn medium" data-intensity="medium">
+                            <span class="intensity-emoji">🟡</span>
+                            <span class="intensity-label">Medium</span>
+                        </button>
+                        <button class="intensity-btn high" data-intensity="high">
+                            <span class="intensity-emoji">🔴</span>
+                            <span class="intensity-label">High</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button id="saveCraving" class="save-btn" disabled>Save Craving</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Smoke Modal -->
+    <div id="addSmokeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="smokeTitle"></h2>
+                <button class="close-btn close-smoke">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="smokeTime">Time:</label>
+                    <div id="smokeTimeDefaults" class="smart-time-defaults">
+                        <!-- Smart time buttons will be added here -->
+                    </div>
+                    <div class="custom-time-input">
+                        <span>Custom Time:</span>
+                        <div class="time-input-group">
+                            <input type="text" id="smokeHH" maxlength="2" placeholder="HH" pattern="[0-9]*">
+                            <span>:</span>
+                            <input type="text" id="smokeMM" maxlength="2" placeholder="MM" pattern="[0-9]*">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cigaretteCount">Cigarettes Smoked:</label>
+                    <div class="number-input">
+                        <button type="button" class="number-btn minus" data-target="cigaretteCount">−</button>
+                        <input type="number" id="cigaretteCount" min="1" step="1" value="1">
+                        <button type="button" class="number-btn plus" data-target="cigaretteCount">+</button>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button id="saveSmoke" class="save-btn" disabled>Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info/Timeline Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content info-modal">
+            <div class="modal-header">
+                <h2 id="infoTitle"></h2>
+                <button class="close-btn close-info">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="timelineContent" class="timeline-content">
+                    <!-- Timeline entries will be added here -->
+                </div>
+                
+                <div class="notes-section">
+                    <h3>Notes for this day:</h3>
+                    <textarea id="dayNotes" rows="3" placeholder="Add notes about your day, triggers, feelings..."></textarea>
+                    <button id="saveNotes" class="save-btn">Save Notes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Day Modal -->
+    <div id="editDayModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2 id="editDayTitle"></h2>
+                <button class="close-btn close-edit">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Cravings Section -->
+                <div class="edit-section">
+                    <h3>😩 Cravings:</h3>
+                    <div id="cravingsList" class="edit-list">
+                        <!-- Cravings will be added here -->
+                    </div>
+                    <div class="edit-actions">
+                        <button id="addCravingEdit" class="add-btn">➕ Add craving</button>
+                        <button id="deleteSelectedCravings" class="delete-btn" disabled>🚫 Delete selected</button>
+                    </div>
+                </div>
+                
+                <!-- Smoked Section -->
+                <div class="edit-section">
+                    <h3>🚬 Smoked:</h3>
+                    <div id="smokedList" class="edit-list">
+                        <!-- Smoked entries will be added here -->
+                    </div>
+                    <div class="edit-actions">
+                        <button id="addSmokeEdit" class="add-btn">➕ Add smoke</button>
+                        <button id="deleteSelectedSmoked" class="delete-btn" disabled>🚫 Delete selected</button>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button id="saveEditDay" class="save-btn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side Menu -->
+    <div id="sideMenu" class="side-menu">
+        <div class="menu-header">
+            <h3>Menu</h3>
+            <button id="closeMenu" class="close-btn">&times;</button>
+        </div>
+        <div class="menu-items">
+            <button id="chartBtn" class="menu-item">
+                <span class="menu-icon">📊</span>
+                <span>Show Chart</span>
+            </button>
+            <button id="exportBtn" class="menu-item">
+                <span class="menu-icon">📤</span>
+                <span>Export CSV</span>
+            </button>
+            <button id="importBtn" class="menu-item">
+                <span class="menu-icon">📥</span>
+                <span>Import CSV</span>
+            </button>
+            <button id="settingsMenuBtn" class="menu-item">
+                <span class="menu-icon">⚙️</span>
+                <span>Settings</span>
+            </button>
+            <button id="aboutBtn" class="menu-item">
+                <span class="menu-icon">ℹ️</span>
+                <span>About v2.0</span>
+            </button>
+        </div>
+    </div>
+    <div id="menuOverlay" class="menu-overlay"></div>
+
+    <!-- Chart Modal -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content chart-modal">
+            <div class="modal-header">
+                <h2>Progress Chart</h2>
+                <button class="close-btn close-chart">&times;</button>
+            </div>
+            <div class="modal-body chart-body">
+                <div class="chart-controls">
+                    <select id="timeRange" class="time-select">
+                        <option value="7">Past 1 Week</option>
+                        <option value="30">Past 1 Month</option>
+                        <option value="90">Past 3 Months</option>
+                        <option value="180">Past 6 Months</option>
+                        <option value="365">Past 1 Year</option>
+                        <option value="730">Past 2 Years</option>
+                        <option value="1825">Past 5 Years</option>
+                    </select>
+                    <div class="toggle-buttons">
+                        <button id="toggleSmoked" class="toggle-btn active" data-type="smoked">
+                            <span class="toggle-dot smoked-dot"></span>
+                            <span class="toggle-text">Smoked</span>
+                        </button>
+                        <button id="toggleCravings" class="toggle-btn active" data-type="cravings">
+                            <span class="toggle-dot cravings-dot"></span>
+                            <span class="toggle-text">Cravings</span>
+                        </button>
+                        <button id="toggleIntensity" class="toggle-btn active" data-type="intensity">
+                            <span class="toggle-dot intensity-dot"></span>
+                            <span class="toggle-text">Intensity</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="progressChart"></canvas>
+                </div>
+                <div class="chart-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Cigarettes:</span>
+                        <span id="totalSmoked" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Cravings:</span>
+                        <span id="totalCravings" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Money Spent:</span>
+                        <span id="moneySpent" class="stat-value">₹0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>About Ashless v2.0</h2>
+                <button class="close-btn close-about">&times;</button>
+            </div>
+            <div class="modal-body about-body">
+                <p>Ashless v2.0 introduces detailed tracking of every craving and cigarette with exact times and intensity levels.</p>
+                <h3>New Features:</h3>
+                <ul>
+                    <li>Track exact time of each craving</li>
+                    <li>Craving intensity (Low/Medium/High)</li>
+                    <li>Timeline view for each day</li>
+                    <li>Automatic daily entry creation</li>
+                    <li>Smart time inputs for today's entries</li>
+                    <li>Intensity visualization on charts</li>
+                </ul>
+                <h3>How to use:</h3>
+                <ul>
+                    <li>Tap 😩 to add a craving with time & intensity</li>
+                    <li>Tap 🚬 to log a cigarette with time</li>
+                    <li>Tap 𝒊 to see day's timeline and add notes</li>
+                    <li>Tap ⋮ to edit/delete entries</li>
+                    <li>Green plus adds yesterday's entry automatically</li>
+                </ul>
+                <p class="motivation">"Every craving you resist brings you closer to freedom!"</p>
+                <div class="version">Version 2.0 | Made with ❤️ for a smoke-free life</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Import CSV</h2>
+                <button class="close-btn close-import">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="file" id="csvFile" accept=".csv" class="file-input">
+                <p class="help-text">CSV Format v2.0: Date,Time,CravingIntensity/CigaretteCount</p>
+                <button id="confirmImport" class="save-btn">Import Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
