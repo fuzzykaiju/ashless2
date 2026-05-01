@@ -345,7 +345,7 @@ class AshlessTrackerV2 {
         
         // Find the oldest date — sort a copy oldest-first by reversing compareDates
         const entriesCopy = [...this.entries];
-        entriesCopy.sort((a, b) => this.compareDates(b.date, a.date)); // newest first
+        entriesCopy.sort((a, b) => this.compareDates(a.date, b.date)); // newest first
         const oldestEntry = entriesCopy[entriesCopy.length - 1]; // last = oldest
         
         const [day, month, year] = oldestEntry.date.split('-').map(Number);
@@ -373,7 +373,7 @@ class AshlessTrackerV2 {
         };
         
         this.entries.push(entry);
-        this.entries.sort((a, b) => this.compareDates(b.date, a.date)); // Sort newest first
+        this.entries.sort((a, b) => this.compareDates(a.date, b.date)); // Sort newest first
         
         localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
         this.loadEntries();
@@ -402,7 +402,7 @@ class AshlessTrackerV2 {
         }
         
         // Sort entries newest first
-        this.entries.sort((a, b) => this.compareDates(b.date, a.date));
+        this.entries.sort((a, b) => this.compareDates(a.date, b.date));
         
         this.entries.forEach((entry) => {
             const row = document.createElement('div');
@@ -1591,7 +1591,7 @@ class AshlessTrackerV2 {
                 
                 // Convert to array and sort
                 const importedEntriesArray = Object.values(entriesByDate);
-                importedEntriesArray.sort((a, b) => this.compareDates(b.date, a.date));
+                importedEntriesArray.sort((a, b) => this.compareDates(a.date, b.date));
                 
                 this.showConfirm(
                     'Import Data',
