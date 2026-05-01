@@ -33,7 +33,7 @@ class AshlessTrackerV2 {
         
         // Buttons
         this.menuToggle = document.getElementById('menuToggle');
-        this.closeMenu = document.getElementById('closeMenu');
+        this.closeMenuBtn = document.getElementById('closeMenu');
         
         // Settings elements
         this.currencyInput = document.getElementById('currency');
@@ -98,12 +98,25 @@ class AshlessTrackerV2 {
         // Import elements
         this.csvFile = document.getElementById('csvFile');
         this.confirmImportBtn = document.getElementById('confirmImport');
+        
+        // Toast & confirm modal
+        this.toast = document.getElementById('toastNotification');
+        this.confirmModal = document.getElementById('confirmModal');
+        this.confirmTitle = document.getElementById('confirmTitle');
+        this.confirmMessage = document.getElementById('confirmMessage');
+        this.confirmOk = document.getElementById('confirmOk');
+        this.confirmCancel = document.getElementById('confirmCancel');
+        this._confirmCallback = null;
+        
+        // Reset modal
+        this.resetModal = document.getElementById('resetModal');
+        this.resetBtn = document.getElementById('resetBtn');
     }
     
     attachEventListeners() {
         // Menu
         this.menuToggle.addEventListener('click', () => this.openMenu());
-        this.closeMenu.addEventListener('click', () => this.closeMenu());
+        this.closeMenuBtn.addEventListener('click', () => this.closeMenu());
         this.menuOverlay.addEventListener('click', () => this.closeMenu());
         
         // Settings
@@ -164,6 +177,19 @@ class AshlessTrackerV2 {
         document.querySelector('.close-about').addEventListener('click', () => this.closeAboutModal());
         document.querySelector('.close-chart').addEventListener('click', () => this.closeChartModal());
         
+        // Reset modal
+        this.resetBtn.addEventListener('click', () => this.openResetModal());
+        document.querySelector('.close-reset').addEventListener('click', () => this.closeResetModal());
+        document.getElementById('cancelReset').addEventListener('click', () => this.closeResetModal());
+        document.getElementById('confirmReset').addEventListener('click', () => this.confirmReset());
+        
+        // Confirm modal
+        this.confirmCancel.addEventListener('click', () => this.closeConfirmModal());
+        this.confirmOk.addEventListener('click', () => {
+            if (this._confirmCallback) this._confirmCallback();
+            this.closeConfirmModal();
+        });
+        
         // Close modals on outside click
         window.addEventListener('click', (e) => this.handleOutsideClick(e));
     }
@@ -204,7 +230,7 @@ class AshlessTrackerV2 {
         const timezone = this.timezoneInput.value;
         
         if (!currency || isNaN(price) || price < 0.1 || !timezone) {
-            alert('Please fill all fields correctly.');
+            this.showToast('Please fill all fields correctly.');
             return;
         }
         
@@ -227,7 +253,7 @@ class AshlessTrackerV2 {
             this.settings.cigarettePrice = price;
             localStorage.setItem('ashless_v2_settings', JSON.stringify(this.settings));
             
-            alert('Price updated successfully! New entries will use this price.');
+            this.showToast('Price updated! New entries will use this price.');
             this.settingsModal.style.display = 'none';
         }
     }
@@ -335,7 +361,7 @@ class AshlessTrackerV2 {
         
         // Check if already exists
         if (this.entries.some(entry => entry.date === prevDate)) {
-            alert('Entry for previous day already exists!');
+            this.showToast('Entry for that day already exists!');
             return;
         }
         
@@ -674,13 +700,13 @@ class AshlessTrackerV2 {
         const intensityBtn = document.querySelector('.intensity-btn.selected');
         
         if (!time || !intensityBtn) {
-            alert('Please select both time and intensity');
+            this.showToast('Please select both time and intensity');
             return;
         }
         
         // Validate time format
         if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-            alert('Please enter a valid time (HH:MM)');
+            this.showToast('Please enter a valid time (HH:MM)');
             return;
         }
         
@@ -688,7 +714,7 @@ class AshlessTrackerV2 {
         const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
         
         if (entryIndex === -1) {
-            alert('Error: Entry not found');
+            this.showToast('Error: Entry not found');
             return;
         }
         
@@ -764,20 +790,20 @@ class AshlessTrackerV2 {
         const count = parseInt(this.cigaretteCountInput.value) || 1;
         
         if (!time || count < 1) {
-            alert('Please enter both time and cigarette count');
+            this.showToast('Please enter both time and cigarette count');
             return;
         }
         
         // Validate time format
         if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-            alert('Please enter a valid time (HH:MM)');
+            this.showToast('Please enter a valid time (HH:MM)');
             return;
         }
         
         const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
         
         if (entryIndex === -1) {
-            alert('Error: Entry not found');
+            this.showToast('Error: Entry not found');
             return;
         }
         
@@ -811,7 +837,7 @@ class AshlessTrackerV2 {
         
         const entry = this.entries.find(e => e.date === date);
         if (!entry) {
-            alert('Entry not found');
+            this.showToast('Entry not found');
             return;
         }
         
@@ -891,15 +917,15 @@ class AshlessTrackerV2 {
         const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
         
         if (entryIndex === -1) {
-            alert('Error: Entry not found');
+            this.showToast('Error: Entry not found');
             return;
         }
         
         this.entries[entryIndex].notes = this.dayNotes.value;
         localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
         
-        alert('Notes saved successfully!');
-        this.closeInfoModal();
+        this.showToast('Notes saved ✓');
+        // Stay on the timeline — don't close the modal
     }
     
     closeInfoModal() {
@@ -913,7 +939,7 @@ class AshlessTrackerV2 {
         
         const entry = this.entries.find(e => e.date === date);
         if (!entry) {
-            alert('Entry not found');
+            this.showToast('Entry not found');
             return;
         }
         
@@ -1051,27 +1077,25 @@ class AshlessTrackerV2 {
         const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
         
         if (indices.length === 0) {
-            alert('Please select cravings to delete');
+            this.showToast('Please select cravings to delete');
             return;
         }
         
-        if (!confirm(`Delete ${indices.length} selected craving(s)?`)) {
-            return;
-        }
-        
-        const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-        if (entryIndex === -1) return;
-        
-        // Remove selected cravings (in reverse order to maintain indices)
-        indices.sort((a, b) => b - a).forEach(index => {
-            if (index >= 0 && index < this.entries[entryIndex].cravings.length) {
-                this.entries[entryIndex].cravings.splice(index, 1);
+        this.showConfirm(
+            'Delete Cravings',
+            `Delete ${indices.length} selected craving(s)?`,
+            () => {
+                const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
+                if (entryIndex === -1) return;
+                indices.sort((a, b) => b - a).forEach(index => {
+                    if (index >= 0 && index < this.entries[entryIndex].cravings.length) {
+                        this.entries[entryIndex].cravings.splice(index, 1);
+                    }
+                });
+                this.displayCravingsForEdit(this.entries[entryIndex].cravings);
+                this.updateDeleteButtonsState();
             }
-        });
-        
-        // Re-display cravings
-        this.displayCravingsForEdit(this.entries[entryIndex].cravings);
-        this.updateDeleteButtonsState();
+        );
     }
     
     deleteSelectedSmoked() {
@@ -1079,27 +1103,25 @@ class AshlessTrackerV2 {
         const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
         
         if (indices.length === 0) {
-            alert('Please select smoked entries to delete');
+            this.showToast('Please select smoked entries to delete');
             return;
         }
         
-        if (!confirm(`Delete ${indices.length} selected smoked entry/entries?`)) {
-            return;
-        }
-        
-        const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-        if (entryIndex === -1) return;
-        
-        // Remove selected smoked entries (in reverse order to maintain indices)
-        indices.sort((a, b) => b - a).forEach(index => {
-            if (index >= 0 && index < this.entries[entryIndex].smoked.length) {
-                this.entries[entryIndex].smoked.splice(index, 1);
+        this.showConfirm(
+            'Delete Smoked',
+            `Delete ${indices.length} selected smoked entry/entries?`,
+            () => {
+                const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
+                if (entryIndex === -1) return;
+                indices.sort((a, b) => b - a).forEach(index => {
+                    if (index >= 0 && index < this.entries[entryIndex].smoked.length) {
+                        this.entries[entryIndex].smoked.splice(index, 1);
+                    }
+                });
+                this.displaySmokedForEdit(this.entries[entryIndex].smoked);
+                this.updateDeleteButtonsState();
             }
-        });
-        
-        // Re-display smoked
-        this.displaySmokedForEdit(this.entries[entryIndex].smoked);
-        this.updateDeleteButtonsState();
+        );
     }
     
     updateDeleteButtonsState() {
@@ -1179,7 +1201,7 @@ class AshlessTrackerV2 {
         
         localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
         
-        alert('Changes saved successfully!');
+        this.showToast('Changes saved successfully!');
         this.closeEditDayModal();
         this.loadEntries();
     }
@@ -1458,7 +1480,7 @@ class AshlessTrackerV2 {
     // Export/Import
     exportCSV() {
         if (this.entries.length === 0) {
-            alert('No data to export!');
+            this.showToast('No data to export!');
             return;
         }
         
@@ -1511,7 +1533,7 @@ class AshlessTrackerV2 {
     importCSV() {
         const file = this.csvFile.files[0];
         if (!file) {
-            alert('Please select a CSV file to import.');
+            this.showToast('Please select a CSV file to import.');
             return;
         }
         
@@ -1522,7 +1544,7 @@ class AshlessTrackerV2 {
                 const rows = content.split('\n').filter(row => row.trim());
                 
                 if (rows.length < 2) {
-                    alert('CSV file is empty or invalid.');
+                    this.showToast('CSV file is empty or invalid.');
                     return;
                 }
                 
@@ -1571,15 +1593,19 @@ class AshlessTrackerV2 {
                 const importedEntriesArray = Object.values(entriesByDate);
                 importedEntriesArray.sort((a, b) => this.compareDates(b.date, a.date));
                 
-                if (confirm(`Import ${importedEntriesArray.length} days of data? This will replace your current data.`)) {
-                    this.entries = importedEntriesArray;
-                    localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-                    this.loadEntries();
-                    this.closeImportModal();
-                    alert('Data imported successfully!');
-                }
+                this.showConfirm(
+                    'Import Data',
+                    `Import ${importedEntriesArray.length} days of data? This will replace your current data.`,
+                    () => {
+                        this.entries = importedEntriesArray;
+                        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
+                        this.loadEntries();
+                        this.closeImportModal();
+                        this.showToast('Data imported successfully!');
+                    }
+                );
             } catch (error) {
-                alert('Error reading CSV file. Please check the format.');
+                this.showToast('Error reading CSV file. Please check the format.');
                 console.error(error);
             }
         };
@@ -1608,7 +1634,8 @@ class AshlessTrackerV2 {
         const modals = [
             this.settingsModal, this.createTodayModal, this.addCravingModal,
             this.addSmokeModal, this.infoModal, this.editDayModal,
-            this.chartModal, this.aboutModal, this.importModal
+            this.chartModal, this.aboutModal, this.importModal,
+            this.confirmModal, this.resetModal
         ];
         
         modals.forEach(modal => {
@@ -1638,11 +1665,60 @@ class AshlessTrackerV2 {
                     case this.importModal:
                         this.closeImportModal();
                         break;
+                    case this.confirmModal:
+                        this.closeConfirmModal();
+                        break;
+                    case this.resetModal:
+                        this.closeResetModal();
+                        break;
                 }
             }
         });
     }
     
+    // ── Helpers: Toast & Confirm ──────────────────────────────────────────
+    showToast(message, duration = 2200) {
+        this.toast.textContent = message;
+        this.toast.style.display = 'block';
+        this.toast.classList.add('visible');
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => {
+            this.toast.classList.remove('visible');
+            setTimeout(() => { this.toast.style.display = 'none'; }, 300);
+        }, duration);
+    }
+
+    showConfirm(title, message, onConfirm) {
+        this.confirmTitle.textContent = title;
+        this.confirmMessage.textContent = message;
+        this._confirmCallback = onConfirm;
+        this.confirmModal.style.display = 'block';
+    }
+
+    closeConfirmModal() {
+        this.confirmModal.style.display = 'none';
+        this._confirmCallback = null;
+    }
+
+    // ── Reset ─────────────────────────────────────────────────────────────
+    openResetModal() {
+        this.closeMenu();
+        this.resetModal.style.display = 'block';
+    }
+
+    closeResetModal() {
+        this.resetModal.style.display = 'none';
+    }
+
+    confirmReset() {
+        this.closeResetModal();
+        localStorage.removeItem('ashless_v2_entries');
+        localStorage.removeItem('ashless_v2_settings');
+        this.entries = [];
+        this.settings = null;
+        this.entriesTable.innerHTML = '<div class="empty-state"><p>All data cleared. Reload the page to set up again.</p></div>';
+    }
+
     closeChartModal() {
         this.chartModal.style.display = 'none';
         if (this.chart) {

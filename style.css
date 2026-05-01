@@ -1038,6 +1038,44 @@ input[type="number"] {
     border-bottom: none;
 }
 
+.reset-menu-item,
+.reset-menu-item:last-child {
+    color: var(--danger-color) !important;
+    border-top: 2px solid rgba(244, 67, 54, 0.35);
+    margin-top: 8px;
+}
+
+.reset-menu-item:hover,
+.reset-menu-item:active {
+    background-color: rgba(244, 67, 54, 0.12) !important;
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background-color: var(--medium-grey);
+    color: var(--text-primary);
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 0.95rem;
+    border: 1px solid var(--light-grey);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    white-space: nowrap;
+    pointer-events: none;
+    max-width: 90vw;
+    text-align: center;
+}
+
+.toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
 .menu-icon {
     font-size: 1.3rem;
     width: 30px;

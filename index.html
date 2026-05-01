@@ -280,6 +280,10 @@
                 <span class="menu-icon">ℹ️</span>
                 <span>About v2.0</span>
             </button>
+            <button id="resetBtn" class="menu-item reset-menu-item">
+                <span class="menu-icon">🗑️</span>
+                <span>Reset All Data</span>
+            </button>
         </div>
     </div>
     <div id="menuOverlay" class="menu-overlay"></div>
@@ -381,6 +385,43 @@
                 <input type="file" id="csvFile" accept=".csv" class="file-input">
                 <p class="help-text">CSV Format v2.0: Date,Time,CravingIntensity/CigaretteCount</p>
                 <button id="confirmImport" class="save-btn">Import Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast" style="display:none;"></div>
+
+    <!-- Confirm Modal (replaces confirm() dialogs) -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content actions-modal">
+            <div class="modal-header">
+                <h2 id="confirmTitle">Confirm</h2>
+            </div>
+            <div class="modal-body" style="padding:20px;text-align:center;">
+                <p id="confirmMessage" style="margin-bottom:24px;color:var(--text-primary);"></p>
+                <div style="display:flex;gap:12px;justify-content:center;">
+                    <button id="confirmCancel" class="action-btn" style="flex:1;justify-content:center;">Cancel</button>
+                    <button id="confirmOk" class="action-btn delete-btn" style="flex:1;justify-content:center;border-color:var(--danger-color);color:var(--danger-color);">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="resetModal" class="modal">
+        <div class="modal-content actions-modal">
+            <div class="modal-header">
+                <h2 style="color:var(--danger-color);">⚠️ Reset All Data</h2>
+                <button class="close-btn close-reset">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:20px;text-align:center;">
+                <p style="margin-bottom:12px;color:var(--text-primary);">This will permanently delete <strong>all entries and settings</strong>.</p>
+                <p style="margin-bottom:24px;color:var(--text-secondary);font-size:0.9rem;">This cannot be undone.</p>
+                <div style="display:flex;gap:12px;justify-content:center;">
+                    <button id="cancelReset" class="action-btn" style="flex:1;justify-content:center;">Cancel</button>
+                    <button id="confirmReset" class="action-btn delete-btn" style="flex:1;justify-content:center;border-color:var(--danger-color);color:var(--danger-color);">🗑️ Reset</button>
+                </div>
             </div>
         </div>
     </div>
