@@ -343,37 +343,39 @@ class AshlessTrackerV2 {
     addPreviousDay() {
         if (this.entries.length === 0) return;
         
-        // Find the oldest date — sort a copy oldest-first by reversing compareDates
-        const entriesCopy = [...this.entries];
-        entriesCopy.sort((a, b) => this.compareDates(a.date, b.date)); // newest first
-        const oldestEntry = entriesCopy[entriesCopy.length - 1]; // last = oldest
+        // Convert all dates to JS Date objects and find the minimum (oldest)
+        let oldestDate = null;
+        let oldestStr = null;
+        this.entries.forEach(entry => {
+            const [d, m, y] = entry.date.split('-').map(Number);
+            const dt = new Date(2000 + y, m - 1, d);
+            if (oldestDate === null || dt < oldestDate) {
+                oldestDate = dt;
+                oldestStr = entry.date;
+            }
+        });
         
-        const [day, month, year] = oldestEntry.date.split('-').map(Number);
+        // Calculate the day before the oldest entry
+        oldestDate.setDate(oldestDate.getDate() - 1);
+        const prevDay   = String(oldestDate.getDate()).padStart(2, '0');
+        const prevMonth = String(oldestDate.getMonth() + 1).padStart(2, '0');
+        const prevYear  = String(oldestDate.getFullYear() - 2000).padStart(2, '0');
+        const prevDate  = `${prevDay}-${prevMonth}-${prevYear}`;
         
-        // Calculate previous day
-        const date = new Date(2000 + year, month - 1, day);
-        date.setDate(date.getDate() - 1);
-        
-        const prevDay = String(date.getDate()).padStart(2, '0');
-        const prevMonth = String(date.getMonth() + 1).padStart(2, '0');
-        const prevYear = String(date.getFullYear() - 2000).padStart(2, '0');
-        const prevDate = `${prevDay}-${prevMonth}-${prevYear}`;
-        
-        // Check if already exists
+        // Guard: should never happen, but just in case
         if (this.entries.some(entry => entry.date === prevDate)) {
             this.showToast('Entry for that day already exists!');
             return;
         }
         
-        const entry = {
-            date: prevDate,
-            cravings: [],
-            smoked: [],
-            notes: ''
-        };
+        this.entries.push({ date: prevDate, cravings: [], smoked: [], notes: '' });
         
-        this.entries.push(entry);
-        this.entries.sort((a, b) => this.compareDates(a.date, b.date)); // Sort newest first
+        // Sort newest-first: directly compare JS Date objects
+        this.entries.sort((a, b) => {
+            const [dA, mA, yA] = a.date.split('-').map(Number);
+            const [dB, mB, yB] = b.date.split('-').map(Number);
+            return new Date(2000 + yB, mB - 1, dB) - new Date(2000 + yA, mA - 1, dA);
+        });
         
         localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
         this.loadEntries();
@@ -402,7 +404,11 @@ class AshlessTrackerV2 {
         }
         
         // Sort entries newest first
-        this.entries.sort((a, b) => this.compareDates(a.date, b.date));
+        this.entries.sort((a, b) => {
+            const [dA, mA, yA] = a.date.split('-').map(Number);
+            const [dB, mB, yB] = b.date.split('-').map(Number);
+            return new Date(2000 + yB, mB - 1, dB) - new Date(2000 + yA, mA - 1, dA);
+        });
         
         this.entries.forEach((entry) => {
             const row = document.createElement('div');
