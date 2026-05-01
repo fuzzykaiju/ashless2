@@ -1041,13 +1041,20 @@ input[type="number"] {
 .reset-menu-item,
 .reset-menu-item:last-child {
     color: var(--danger-color) !important;
-    border-top: 2px solid rgba(244, 67, 54, 0.35);
     margin-top: 8px;
 }
 
 .reset-menu-item:hover,
 .reset-menu-item:active {
     background-color: rgba(244, 67, 54, 0.12) !important;
+}
+
+/* Reset modal confirm button - centre emoji + text */
+#confirmReset {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 /* Toast Notification */

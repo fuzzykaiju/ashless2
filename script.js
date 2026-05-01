@@ -343,10 +343,10 @@ class AshlessTrackerV2 {
     addPreviousDay() {
         if (this.entries.length === 0) return;
         
-        // Find the oldest date (last in array since sorted newest first)
+        // Find the oldest date — sort a copy oldest-first by reversing compareDates
         const entriesCopy = [...this.entries];
-        entriesCopy.sort((a, b) => this.compareDates(a.date, b.date)); // Sort oldest first
-        const oldestEntry = entriesCopy[0];
+        entriesCopy.sort((a, b) => this.compareDates(b.date, a.date)); // newest first
+        const oldestEntry = entriesCopy[entriesCopy.length - 1]; // last = oldest
         
         const [day, month, year] = oldestEntry.date.split('-').map(Number);
         
