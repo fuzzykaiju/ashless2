@@ -19,8 +19,8 @@
     --warning-color: #ff9800;
     --danger-color: #f44336;
     --cyan-color: #00bcd4;
-    --chart-smoked: #ff9900;
-    --chart-cravings: #00bcd4;
+    --chart-smoked: #e07030;
+    --chart-cravings: #5090d0;
     --column-count: 6;
     --low-intensity: #4caf50;
     --medium-intensity: #ff9800;
@@ -648,6 +648,13 @@ input[type="number"] {
 
 .number-btn:active {
     transform: scale(0.95);
+}
+
+.number-btn.small {
+    width: 28px;
+    height: 28px;
+    font-size: 1.1rem;
+    box-shadow: none;
 }
 
 /* Form Actions */
