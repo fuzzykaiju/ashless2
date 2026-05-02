@@ -1177,42 +1177,49 @@ input[type="number"] {
     font-size: 1rem;
 }
 
-.toggle-buttons {
+.chart-controls {
     display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
-.toggle-btn {
+/* Chart tabs */
+.chart-tabs {
+    display: flex;
+    gap: 0;
+    margin: 16px 0 0;
+    border-bottom: 2px solid var(--light-grey);
+}
+
+.chart-tab {
+    flex: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background-color: var(--medium-grey);
-    border: 2px solid var(--light-grey);
-    border-radius: 20px;
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 120px;
     justify-content: center;
+    gap: 7px;
+    padding: 10px 8px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
 }
 
-.toggle-btn.active {
-    border-color: var(--accent-color);
-    background-color: rgba(255, 153, 0, 0.1);
+.chart-tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-color);
 }
 
-.toggle-dot {
-    width: 12px;
-    height: 12px;
+.tab-dot {
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-}
-
-.toggle-text {
-    font-size: 0.95rem;
-    font-weight: 500;
+    flex-shrink: 0;
 }
 
 .smoked-dot {
@@ -1236,12 +1243,12 @@ input[type="number"] {
 .chart-stats {
     display: flex;
     justify-content: space-around;
-    padding: 15px;
+    padding: 12px;
     background-color: var(--medium-grey);
     border-radius: 8px;
-    margin-top: 20px;
+    margin-top: 14px;
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 10px;
 }
 
 .stat-item {
@@ -1399,16 +1406,15 @@ input[type="number"] {
         grid-template-columns: 1fr;
     }
     
-    .toggle-buttons {
-        flex-direction: column;
-        align-items: center;
+    .chart-tabs {
+        gap: 0;
     }
-    
-    .toggle-btn {
-        width: 100%;
-        max-width: 200px;
+
+    .chart-tab {
+        padding: 8px 4px;
+        font-size: 0.8rem;
     }
-    
+
     .chart-stats {
         flex-direction: column;
         align-items: center;

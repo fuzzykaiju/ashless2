@@ -81,13 +81,12 @@ class AshlessTracker {
         this.deleteSmokedBtn   = $('deleteSelectedSmoked');
 
         // Chart
-        this.timeRange       = $('timeRange');
-        this.toggleSmoked    = $('toggleSmoked');
-        this.toggleCravings  = $('toggleCravings');
-        this.toggleIntensity = $('toggleIntensity');
-        this.statSmoked      = $('totalSmoked');
-        this.statCravings    = $('totalCravings');
-        this.statMoney       = $('moneySpent');
+        this.timeRange    = $('timeRange');
+        this.statSmoked   = $('totalSmoked');
+        this.statCravings = $('totalCravings');
+        this.statMoney    = $('moneySpent');
+        this.charts       = { smoked: null, cravings: null, intensity: null };
+        this.activeTab    = 'smoked';
 
         // Import
         this.csvFile = $('csvFile');
@@ -113,7 +112,7 @@ class AshlessTracker {
 
         // Menu items
         document.getElementById('chartBtn').addEventListener('click',
-            () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderChart(), 100); });
+            () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderActiveTab(), 100); });
         document.getElementById('exportBtn').addEventListener('click',
             () => this._exportCSV());
         document.getElementById('importBtn').addEventListener('click',
@@ -196,13 +195,10 @@ class AshlessTracker {
             () => this._saveEditDay());
 
         // Chart controls
-        this.timeRange.addEventListener('change', () => this._renderChart());
-        this.toggleSmoked.addEventListener('click',
-            () => { this.toggleSmoked.classList.toggle('active'); this._renderChart(); });
-        this.toggleCravings.addEventListener('click',
-            () => { this.toggleCravings.classList.toggle('active'); this._renderChart(); });
-        this.toggleIntensity.addEventListener('click',
-            () => { this.toggleIntensity.classList.toggle('active'); this._renderChart(); });
+        this.timeRange.addEventListener('change', () => this._renderActiveTab());
+        document.querySelectorAll('.chart-tab').forEach(tab => {
+            tab.addEventListener('click', () => this._switchTab(tab.dataset.tab));
+        });
 
         // Chart / About / Import close buttons
         document.querySelector('.close-chart').addEventListener('click',  () => this._closeChart());
@@ -840,7 +836,20 @@ class AshlessTracker {
 
     // ── Chart ─────────────────────────────────────────────────────────────────
 
-    _renderChart() {
+    // Shared chart style constants
+    _chartStyle() {
+        const s = getComputedStyle(document.documentElement);
+        return {
+            textPrimary: s.getPropertyValue('--text-primary').trim()   || '#e0e0e0',
+            textSecond:  s.getPropertyValue('--text-secondary').trim() || '#888888',
+            accent:      s.getPropertyValue('--accent-color').trim()   || '#e07030',
+            gridColor:   'rgba(255,255,255,0.07)',
+            font:        'Consolas, Monaco, monospace',
+        };
+    }
+
+    // Get filtered + sorted entries for the selected time range, update stats
+    _filteredEntries() {
         const days   = parseInt(this.timeRange.value);
         const now    = new Date();
         const cutoff = new Date(now);
@@ -850,103 +859,199 @@ class AshlessTracker {
             .filter(e => { const d = this._toDate(e.date); return d >= cutoff && d <= now; })
             .sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
 
-        const smokedData   = filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0));
-        const cravingsData = filtered.map(e => e.cravings.length);
-        const totalMoney   = filtered.reduce((s, e) => s + e.smoked.reduce((es, x) =>
-            es + x.count * (x.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
-
-        this.statSmoked.textContent   = smokedData.reduce((s, v) => s + v, 0);
-        this.statCravings.textContent = cravingsData.reduce((s, v) => s + v, 0);
+        // Update stats
+        const totalSmoked   = filtered.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const totalCravings = filtered.reduce((s, e) => s + e.cravings.length, 0);
+        const totalMoney    = filtered.reduce((s, e) => s + e.smoked.reduce((x, y) =>
+            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        this.statSmoked.textContent   = totalSmoked;
+        this.statCravings.textContent = totalCravings;
         this.statMoney.textContent    = `${this.settings.currency}${totalMoney.toFixed(2)}`;
 
-        if (this.chart) { this.chart.destroy(); this.chart = null; }
+        return filtered;
+    }
 
-        // Read actual CSS variable values so Chart.js gets real colours, not var() strings
-        const style       = getComputedStyle(document.documentElement);
-        const textPrimary = style.getPropertyValue('--text-primary').trim()   || '#e0e0e0';
-        const textSecond  = style.getPropertyValue('--text-secondary').trim() || '#888888';
-        const accent      = style.getPropertyValue('--accent-color').trim()   || '#e07030';
+    _switchTab(tab) {
+        this.activeTab = tab;
+        document.querySelectorAll('.chart-tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tab);
+        });
+        ['smoked', 'cravings', 'intensity'].forEach(key => {
+            document.getElementById(`chartPanel${key.charAt(0).toUpperCase() + key.slice(1)}`)
+                .style.display = key === tab ? 'block' : 'none';
+        });
+        this._renderActiveTab();
+    }
 
-        const datasets = [];
+    _renderActiveTab() {
+        if (this.activeTab === 'smoked')    this._renderChartSmoked();
+        if (this.activeTab === 'cravings')  this._renderChartCravings();
+        if (this.activeTab === 'intensity') this._renderChartIntensity();
+    }
 
-        if (this.toggleSmoked.classList.contains('active')) {
-            datasets.push({
-                label: 'Cigarettes Smoked',
-                data: smokedData,
-                borderColor: '#e07030',
-                backgroundColor: 'transparent',
-                pointBackgroundColor: '#e07030',
-                borderWidth: 2, tension: 0.3,
-            });
-        }
-        if (this.toggleCravings.classList.contains('active')) {
-            datasets.push({
-                label: 'Cravings',
-                data: cravingsData,
-                borderColor: '#5090d0',
-                backgroundColor: 'transparent',
-                pointBackgroundColor: '#5090d0',
-                borderWidth: 2, tension: 0.3, borderDash: [5, 5],
-            });
-        }
-        if (this.toggleIntensity.classList.contains('active')) {
-            const colorMap = { low: '#4caf50', medium: '#ff9800', high: '#f44336' };
-            const pts = filtered.flatMap((e, ei) =>
-                e.cravings.map(c => {
-                    const [h, m] = c.time.split(':').map(Number);
-                    return { x: ei + (h * 60 + m) / 1440, y: e.cravings.length, intensity: c.intensity };
-                })
-            );
-            if (pts.length) datasets.push({
-                label: 'Craving Intensity',
-                data: pts,
-                type: 'scatter',
-                pointBackgroundColor: pts.map(p => colorMap[p.intensity] || '#fff'),
-                pointBorderColor: '#fff', pointBorderWidth: 1, pointRadius: 6, showLine: false,
-            });
-        }
+    // ── Tab 1: Smoked — simple orange line chart
+    _renderChartSmoked() {
+        const filtered = this._filteredEntries();
+        const st = this._chartStyle();
 
-        this.chart = new Chart(
-            document.getElementById('progressChart').getContext('2d'),
-            {
+        if (this.charts.smoked) { this.charts.smoked.destroy(); this.charts.smoked = null; }
+
+        this.charts.smoked = new Chart(
+            document.getElementById('chartSmoked').getContext('2d'), {
                 type: 'line',
-                data: { labels: filtered.map(e => e.date), datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true, position: 'top',
-                            labels: { color: textPrimary, font: { family: 'Consolas, Monaco, monospace' } },
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(30,30,30,0.9)',
-                            titleColor: accent, bodyColor: textPrimary,
-                            borderColor: accent, borderWidth: 1, cornerRadius: 6,
-                        },
-                    },
-                    scales: {
-                        x: {
-                            grid:  { color: 'rgba(255,255,255,0.08)' },
-                            ticks: { color: textSecond, maxRotation: 45,
-                                     font: { family: 'Consolas, Monaco, monospace' } },
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid:  { color: 'rgba(255,255,255,0.08)' },
-                            ticks: { stepSize: 1, color: textSecond,
-                                     font: { family: 'Consolas, Monaco, monospace' } },
-                        },
-                    },
-                    animation: { duration: 600, easing: 'easeOutQuart' },
+                data: {
+                    labels: filtered.map(e => e.date),
+                    datasets: [{
+                        label: 'Cigarettes Smoked',
+                        data: filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0)),
+                        borderColor: '#e07030',
+                        backgroundColor: 'rgba(224,112,48,0.08)',
+                        pointBackgroundColor: '#e07030',
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        borderWidth: 1.5,
+                        tension: 0.3,
+                        fill: true,
+                    }],
                 },
+                options: this._chartOptions(st),
             }
         );
     }
 
+    // ── Tab 2: Cravings — simple line chart
+    _renderChartCravings() {
+        const filtered = this._filteredEntries();
+        const st = this._chartStyle();
+
+        if (this.charts.cravings) { this.charts.cravings.destroy(); this.charts.cravings = null; }
+
+        this.charts.cravings = new Chart(
+            document.getElementById('chartCravings').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: filtered.map(e => e.date),
+                    datasets: [{
+                        label: 'Cravings',
+                        data: filtered.map(e => e.cravings.length),
+                        borderColor: '#5090d0',
+                        backgroundColor: 'rgba(80,144,208,0.08)',
+                        pointBackgroundColor: '#5090d0',
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        borderWidth: 1.5,
+                        tension: 0.3,
+                        fill: true,
+                    }],
+                },
+                options: this._chartOptions(st),
+            }
+        );
+    }
+
+    // ── Tab 3: Intensity — stacked bar (low / medium / high counts per day)
+    _renderChartIntensity() {
+        const filtered = this._filteredEntries();
+        const st = this._chartStyle();
+
+        if (this.charts.intensity) { this.charts.intensity.destroy(); this.charts.intensity = null; }
+
+        const low    = filtered.map(e => e.cravings.filter(c => c.intensity === 'low').length);
+        const medium = filtered.map(e => e.cravings.filter(c => c.intensity === 'medium').length);
+        const high   = filtered.map(e => e.cravings.filter(c => c.intensity === 'high').length);
+
+        this.charts.intensity = new Chart(
+            document.getElementById('chartIntensity').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: filtered.map(e => e.date),
+                    datasets: [
+                        {
+                            label: 'Low',
+                            data: low,
+                            backgroundColor: 'rgba(76,175,80,0.85)',
+                            borderColor: '#4caf50',
+                            borderWidth: 1,
+                            borderRadius: 2,
+                        },
+                        {
+                            label: 'Medium',
+                            data: medium,
+                            backgroundColor: 'rgba(255,152,0,0.85)',
+                            borderColor: '#ff9800',
+                            borderWidth: 1,
+                            borderRadius: 2,
+                        },
+                        {
+                            label: 'High',
+                            data: high,
+                            backgroundColor: 'rgba(244,67,54,0.85)',
+                            borderColor: '#f44336',
+                            borderWidth: 1,
+                            borderRadius: 2,
+                        },
+                    ],
+                },
+                options: this._chartOptions(st, { stacked: true }),
+            }
+        );
+    }
+
+    // Shared Chart.js options factory
+    _chartOptions(st, { stacked = false, tooltipExtra = null } = {}) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: st.textPrimary,
+                        font: { family: st.font, size: 11 },
+                        boxWidth: 12,
+                        padding: 10,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(20,20,20,0.92)',
+                    titleColor: st.accent,
+                    bodyColor: st.textPrimary,
+                    borderColor: st.accent,
+                    borderWidth: 1,
+                    cornerRadius: 6,
+                    callbacks: tooltipExtra ? {
+                        afterBody: (items) => {
+                            const extra = tooltipExtra(items[0]);
+                            return extra ? [extra] : [];
+                        },
+                    } : {},
+                },
+            },
+            scales: {
+                x: {
+                    stacked,
+                    grid:  { color: st.gridColor },
+                    ticks: { color: st.textSecond, maxRotation: 45,
+                             font: { family: st.font, size: 10 } },
+                },
+                y: {
+                    stacked,
+                    beginAtZero: true,
+                    grid:  { color: st.gridColor },
+                    ticks: { stepSize: 1, color: st.textSecond,
+                             font: { family: st.font, size: 10 } },
+                },
+            },
+            animation: { duration: 400, easing: 'easeOutQuart' },
+        };
+    }
+
     _closeChart() {
         this._closeModal('chart');
-        if (this.chart) { this.chart.destroy(); this.chart = null; }
+        Object.keys(this.charts).forEach(k => {
+            if (this.charts[k]) { this.charts[k].destroy(); this.charts[k] = null; }
+        });
     }
 
     // ── Export / Import ───────────────────────────────────────────────────────

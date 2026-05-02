@@ -300,52 +300,61 @@
     <div id="chartModal" class="modal">
         <div class="modal-content chart-modal">
             <div class="modal-header">
-                <h2>Progress Chart</h2>
+                <h2>Progress Charts</h2>
                 <button class="close-btn close-chart">&times;</button>
             </div>
             <div class="modal-body chart-body">
-                <div class="chart-controls">
-                    <select id="timeRange" class="time-select">
-                        <option value="7">Past 1 Week</option>
-                        <option value="30">Past 1 Month</option>
-                        <option value="90">Past 3 Months</option>
-                        <option value="180">Past 6 Months</option>
-                        <option value="365">Past 1 Year</option>
-                        <option value="730">Past 2 Years</option>
-                        <option value="1825">Past 5 Years</option>
-                    </select>
-                    <div class="toggle-buttons">
-                        <button id="toggleSmoked" class="toggle-btn active" data-type="smoked">
-                            <span class="toggle-dot smoked-dot"></span>
-                            <span class="toggle-text">Smoked</span>
-                        </button>
-                        <button id="toggleCravings" class="toggle-btn active" data-type="cravings">
-                            <span class="toggle-dot cravings-dot"></span>
-                            <span class="toggle-text">Cravings</span>
-                        </button>
-                        <button id="toggleIntensity" class="toggle-btn active" data-type="intensity">
-                            <span class="toggle-dot intensity-dot"></span>
-                            <span class="toggle-text">Intensity</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <canvas id="progressChart"></canvas>
-                </div>
+
+                <!-- Time range + stats -->
+                <select id="timeRange" class="time-select">
+                    <option value="7">Past 1 Week</option>
+                    <option value="30">Past 1 Month</option>
+                    <option value="90">Past 3 Months</option>
+                    <option value="180">Past 6 Months</option>
+                    <option value="365">Past 1 Year</option>
+                    <option value="730">Past 2 Years</option>
+                    <option value="1825">Past 5 Years</option>
+                </select>
+
                 <div class="chart-stats">
                     <div class="stat-item">
-                        <span class="stat-label">Total Cigarettes:</span>
+                        <span class="stat-label">Cigarettes</span>
                         <span id="totalSmoked" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Total Cravings:</span>
+                        <span class="stat-label">Cravings</span>
                         <span id="totalCravings" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Money Spent:</span>
-                        <span id="moneySpent" class="stat-value">₹0</span>
+                        <span class="stat-label">Money Spent</span>
+                        <span id="moneySpent" class="stat-value">0</span>
                     </div>
                 </div>
+
+                <!-- Tabs -->
+                <div class="chart-tabs">
+                    <button class="chart-tab active" data-tab="smoked">
+                        <span class="tab-dot smoked-dot"></span> Smoked
+                    </button>
+                    <button class="chart-tab" data-tab="cravings">
+                        <span class="tab-dot cravings-dot"></span> Cravings
+                    </button>
+                    <button class="chart-tab" data-tab="intensity">
+                        <span class="tab-dot intensity-dot"></span> Intensity
+                    </button>
+                </div>
+
+                <!-- Three canvases — only the active one is shown -->
+                <div class="chart-container" id="chartPanelSmoked">
+                    <canvas id="chartSmoked"></canvas>
+                </div>
+                <div class="chart-container" id="chartPanelCravings" style="display:none;">
+                    <canvas id="chartCravings"></canvas>
+                </div>
+                <div class="chart-container" id="chartPanelIntensity" style="display:none;">
+                    <canvas id="chartIntensity"></canvas>
+                </div>
+
             </div>
         </div>
     </div>
@@ -434,7 +443,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=8"></script>
+    <script src="script.js?v=9"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
