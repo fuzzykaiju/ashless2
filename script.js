@@ -970,9 +970,9 @@ class AshlessTrackerV2 {
             <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="${number - 1}">
             <span>${number}.</span>
             <div class="edit-time-input">
-                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-hh" value="${craving.time.split(':')[0]}" maxlength="2" placeholder="HH">
+                <input type="text" inputmode="numeric" class="edit-hh" value="${craving.time.split(':')[0]}" maxlength="2" placeholder="HH">
                 <span>:</span>
-                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-mm" value="${craving.time.split(':')[1]}" maxlength="2" placeholder="MM">
+                <input type="text" inputmode="numeric" class="edit-mm" value="${craving.time.split(':')[1]}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-intensity-selector">
                 <button class="edit-intensity-btn low ${craving.intensity === 'low' ? 'selected' : ''}" data-intensity="low">🟢</button>
@@ -991,6 +991,8 @@ class AshlessTrackerV2 {
         mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
         hhInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
         mmInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
+
+        intensityBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 intensityBtns.forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
@@ -1018,9 +1020,9 @@ class AshlessTrackerV2 {
             <input type="checkbox" class="edit-checkbox smoke-checkbox" data-index="${number - 1}">
             <span>${number}.</span>
             <div class="edit-time-input">
-                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-hh" value="${smoke.time.split(':')[0]}" maxlength="2" placeholder="HH">
+                <input type="text" inputmode="numeric" class="edit-hh" value="${smoke.time.split(':')[0]}" maxlength="2" placeholder="HH">
                 <span>:</span>
-                <input type="number" pattern="[0-9]*" inputmode="numeric" class="edit-mm" value="${smoke.time.split(':')[1]}" maxlength="2" placeholder="MM">
+                <input type="text" inputmode="numeric" class="edit-mm" value="${smoke.time.split(':')[1]}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-count-input">
                 <button type="button" class="number-btn minus small">−</button>
@@ -1041,6 +1043,8 @@ class AshlessTrackerV2 {
         mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
         hhInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
         mmInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
+
+        minusBtn.addEventListener('click', () => {
             let value = parseInt(countInput.value) || 1;
             if (value > 1) value--;
             countInput.value = value;
@@ -1715,7 +1719,8 @@ class AshlessTrackerV2 {
         localStorage.removeItem('ashless_v2_settings');
         this.entries = [];
         this.settings = null;
-        this.entriesTable.innerHTML = '<div class="empty-state"><p>All data cleared. Reload the page to set up again.</p></div>';
+        // Re-run setup flow — shows welcome/settings modal cleanly
+        this.checkFirstTimeSetup();
     }
 
     closeChartModal() {

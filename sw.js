@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ashless-v2';
+const CACHE_NAME = 'ashless-v3';
 const ASSETS = [
   './index.html',
   './script.js',
