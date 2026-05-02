@@ -98,6 +98,11 @@ class AshlessTracker {
         this.confirmMessage = $('confirmMessage');
         this.confirmOk      = $('confirmOk');
         this.confirmCancel  = $('confirmCancel');
+
+        // Last-smoked timer
+        this.timerEl   = $('lastSmokedTimer');
+        this.popoverEl = $('timerPopover');
+        this._timerInterval = null;
     }
 
     _bindListeners() {
@@ -243,6 +248,7 @@ class AshlessTracker {
         } else {
             this._ensureTodayExists();
             this._renderTable();
+            this._startTimer();
         }
     }
 
@@ -361,6 +367,7 @@ class AshlessTracker {
         this._closeModal('createToday');
         this._ensureTodayExists();
         this._renderTable();
+        this._startTimer();
     }
 
     addPreviousDay() {
@@ -539,6 +546,7 @@ class AshlessTracker {
         this._persist('entries');
         this._closeModal('addSmoke');
         this._renderTable();
+        this._startTimer();
     }
 
     // ── Smart time presets ────────────────────────────────────────────────────
@@ -830,6 +838,7 @@ class AshlessTracker {
         this._toast('Changes saved ✓');
         this._closeModal('editDay');
         this._renderTable();
+        this._startTimer();
     }
 
     // ── Chart ─────────────────────────────────────────────────────────────────
@@ -1030,11 +1039,116 @@ class AshlessTracker {
 
     _doReset() {
         this._closeModal('reset');
+        clearInterval(this._timerInterval);
+        this._timerInterval = null;
+        this.timerEl.textContent = 'No cigarettes logged yet';
+        this.timerEl.classList.remove('timer-tappable');
+        this.popoverEl.style.display = 'none';
         localStorage.removeItem('ashless_v2_entries');
         localStorage.removeItem('ashless_v2_settings');
         this.entries  = [];
         this.settings = null;
         this._boot();
+    }
+
+    // ── Last-smoked timer ─────────────────────────────────────────────────────
+
+    // Find the most recent smoked event across all entries.
+    // Returns a JS Date or null if nothing smoked yet.
+    _findLastSmoked() {
+        let latest = null;
+        this.entries.forEach(entry => {
+            entry.smoked.forEach(s => {
+                // Parse date + time into a real timestamp
+                const [d, m, y] = entry.date.split('-').map(Number);
+                const [hh, mm]  = s.time.split(':').map(Number);
+                const dt = new Date(2000 + y, m - 1, d, hh, mm, 0);
+                if (!latest || dt > latest) latest = dt;
+            });
+        });
+        return latest;
+    }
+
+    // Convert ms elapsed → friendly rounded label
+    _formatTimerLabel(ms) {
+        const totalMin  = Math.floor(ms / 60000);
+        const totalHrs  = Math.floor(ms / 3600000);
+        const totalDays = Math.floor(ms / 86400000);
+        const totalWks  = Math.floor(totalDays / 7);
+        const totalMths = Math.floor(totalDays / 30.44);
+        const totalYrs  = Math.floor(totalDays / 365.25);
+
+        if (totalMin  < 1)   return 'Last smoked just now';
+        if (totalMin  < 60)  return `Last smoked about ${totalMin} min ago`;
+        if (totalHrs  < 24)  return `Last smoked about ${totalHrs} hr${totalHrs > 1 ? 's' : ''} ago`;
+        if (totalDays < 7)   return `Last smoked about ${totalDays} day${totalDays > 1 ? 's' : ''} ago`;
+        if (totalWks  < 4)   return `Last smoked about ${totalWks} week${totalWks > 1 ? 's' : ''} ago`;
+        if (totalMths < 12)  return `Last smoked about ${totalMths} month${totalMths > 1 ? 's' : ''} ago`;
+        return `Last smoked about ${totalYrs} year${totalYrs > 1 ? 's' : ''} ago`;
+    }
+
+    // Convert ms elapsed → precise breakdown string for the popover
+    _formatExactDuration(ms) {
+        const totalSec  = Math.floor(ms / 1000);
+        const totalMin  = Math.floor(totalSec / 60);
+        const totalHrs  = Math.floor(totalMin / 60);
+        const totalDays = Math.floor(totalHrs / 24);
+
+        const years  = Math.floor(totalDays / 365);
+        const months = Math.floor((totalDays % 365) / 30);
+        const days   = Math.floor((totalDays % 365) % 30);
+        const hrs    = totalHrs  % 24;
+        const mins   = totalMin  % 60;
+
+        const parts = [];
+        if (years)  parts.push(`${years} yr${years  > 1 ? 's' : ''}`);
+        if (months) parts.push(`${months} mo`);
+        if (days)   parts.push(`${days} day${days   > 1 ? 's' : ''}`);
+        if (hrs)    parts.push(`${hrs} hr${hrs    > 1 ? 's' : ''}`);
+        parts.push(`${mins} min`);
+
+        return parts.join(', ');
+    }
+
+    _startTimer() {
+        // Clear any existing interval
+        clearInterval(this._timerInterval);
+
+        const tick = () => {
+            const last = this._findLastSmoked();
+            if (!last) {
+                this.timerEl.textContent = 'No cigarettes logged yet';
+                this.timerEl.classList.remove('timer-tappable');
+                return;
+            }
+            const ms = Date.now() - last.getTime();
+            this.timerEl.textContent = this._formatTimerLabel(ms);
+            this.timerEl.classList.add('timer-tappable');
+        };
+
+        tick(); // Run immediately
+        this._timerInterval = setInterval(tick, 60000); // Update every minute
+
+        // Tap listener — show/hide popover
+        this.timerEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const last = this._findLastSmoked();
+            if (!last) return;
+
+            if (this.popoverEl.style.display === 'block') {
+                this.popoverEl.style.display = 'none';
+                return;
+            }
+
+            const ms = Date.now() - last.getTime();
+            this.popoverEl.textContent = `Exactly: ${this._formatExactDuration(ms)}`;
+            this.popoverEl.style.display = 'block';
+        });
+
+        // Dismiss popover on tap anywhere else
+        document.addEventListener('click', () => {
+            this.popoverEl.style.display = 'none';
+        });
     }
 
     // ── Toast & Confirm ───────────────────────────────────────────────────────

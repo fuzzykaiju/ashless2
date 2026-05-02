@@ -19,8 +19,11 @@
     <header class="fixed-header">
         <div class="header-content">
             <div class="title-section">
-                <h1>Ashless v2.0</h1>
-                <p class="tagline">Track every craving. Every cigarette.<br>Every victory.</p>
+                <h1>Ashless v2.6</h1>
+                <p id="lastSmokedTimer" class="tagline timer-label" aria-label="Tap for exact duration">
+                    Loading...
+                </p>
+                <div id="timerPopover" class="timer-popover" style="display:none;"></div>
             </div>
             <button id="menuToggle" class="menu-btn" aria-label="Open menu">☰</button>
         </div>
@@ -432,7 +435,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=6"></script>
+    <script src="script.js?v=8"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
