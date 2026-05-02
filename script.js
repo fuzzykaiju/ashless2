@@ -134,10 +134,6 @@ class AshlessTracker {
         // Create-today modal
         document.getElementById('createTodayYes').addEventListener('click',
             () => this._createTodayEntry());
-        document.getElementById('createTodayNo').addEventListener('click', () => {
-            this._closeModal('createToday');
-            this._createTodayEntry();  // auto-create anyway
-        });
 
         // Add-craving modal
         document.querySelector('.close-craving').addEventListener('click',
@@ -285,7 +281,7 @@ class AshlessTracker {
             this.currencyInput.disabled = false;
             this.timezoneInput.disabled = false;
             this._closeModal('settings');
-            this.createTodayTitle.textContent = `Start tracking for today (${this._today()})?`;
+            this.createTodayTitle.textContent = `Your journey to fewer cigarettes starts here!`;
             this._openModal('createToday');
         } else {
             // Price-only update
@@ -456,7 +452,8 @@ class AshlessTracker {
         help.innerHTML = `
             <p>• Tap 😩 or 🚬 in a row to log a craving or cigarette</p>
             <p>• Tap 𝒊 to view the day's timeline &amp; notes</p>
-            <p>• Tap ⋮ to edit or delete entries</p>`;
+            <p>• Tap ⋮ to edit or delete entries</p>
+            <p>• A zero-entry will be created automatically at 00:00 each day</p>`;
         this.entriesTable.appendChild(help);
 
         // Row event listeners

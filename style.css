@@ -741,21 +741,29 @@ input[type="number"] {
 }
 
 .cancel-btn {
-    padding: 15px 30px;
-    background-color: var(--medium-grey);
-    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 15px;
+    background-color: #3d3d3d;
+    color: #ffffff;
     border: none;
     border-radius: 8px;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s, transform 0.1s;
     width: auto;
-    min-width: 150px;
-    max-width: 250px;
 }
 
 .cancel-btn:hover {
-    background-color: var(--light-grey);
+    background-color: #2f2f2f;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.cancel-btn:active {
+    transform: scale(0.97);
 }
 
 /* Currency Input */
