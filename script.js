@@ -1,1742 +1,1076 @@
-class AshlessTrackerV2 {
+// ─────────────────────────────────────────────────────────────────────────────
+//  Ashless v2.6  —  Quit Smoking Tracker
+// ─────────────────────────────────────────────────────────────────────────────
+
+class AshlessTracker {
+
+    // ── Initialisation ────────────────────────────────────────────────────────
+
     constructor() {
-        // Core data
-        this.settings = JSON.parse(localStorage.getItem('ashless_v2_settings')) || null;
-        this.entries = JSON.parse(localStorage.getItem('ashless_v2_entries')) || [];
-        this.currentEditingDate = null;
-        this.currentEditingIndex = null;
-        this.chart = null;
-        
-        // Initialize
-        this.initializeElements();
-        this.attachEventListeners();
-        this.checkFirstTimeSetup();
-        this.loadTimezones();
+        this.settings    = JSON.parse(localStorage.getItem('ashless_v2_settings')) || null;
+        this.entries     = JSON.parse(localStorage.getItem('ashless_v2_entries'))  || [];
+        this.activeDate  = null;   // date string currently open in any modal
+        this.chart       = null;
+        this._confirmCb  = null;
+        this._toastTimer = null;
+
+        this._cacheElements();
+        this._bindListeners();
+        this._populateTimezones();
+        this._boot();
     }
-    
-    initializeElements() {
-        // Main UI elements
-        this.entriesTable = document.getElementById('entriesTable');
-        
+
+    _cacheElements() {
+        const $ = id => document.getElementById(id);
+
+        // Layout
+        this.entriesTable = $('entriesTable');
+        this.sideMenu     = $('sideMenu');
+        this.menuOverlay  = $('menuOverlay');
+
         // Modals
-        this.settingsModal = document.getElementById('settingsModal');
-        this.createTodayModal = document.getElementById('createTodayModal');
-        this.addCravingModal = document.getElementById('addCravingModal');
-        this.addSmokeModal = document.getElementById('addSmokeModal');
-        this.infoModal = document.getElementById('infoModal');
-        this.editDayModal = document.getElementById('editDayModal');
-        this.chartModal = document.getElementById('chartModal');
-        this.aboutModal = document.getElementById('aboutModal');
-        this.importModal = document.getElementById('importModal');
-        this.sideMenu = document.getElementById('sideMenu');
-        this.menuOverlay = document.getElementById('menuOverlay');
-        
-        // Buttons
-        this.menuToggle = document.getElementById('menuToggle');
-        this.closeMenuBtn = document.getElementById('closeMenu');
-        
-        // Settings elements
-        this.currencyInput = document.getElementById('currency');
-        this.cigarettePriceInput = document.getElementById('cigarettePrice');
-        this.timezoneInput = document.getElementById('timezone');
-        this.saveSettingsBtn = document.getElementById('saveSettings');
-        this.currencySymbolElement = document.getElementById('currencySymbol');
-        this.settingsTitle = document.getElementById('settingsTitle');
-        
-        // Create today modal
-        this.createTodayTitle = document.getElementById('createTodayTitle');
-        this.createTodayYes = document.getElementById('createTodayYes');
-        this.createTodayNo = document.getElementById('createTodayNo');
-        
-        // Add craving modal
-        this.cravingTitle = document.getElementById('cravingTitle');
-        this.smartTimeDefaults = document.getElementById('smartTimeDefaults');
-        this.cravingHH = document.getElementById('cravingHH');
-        this.cravingMM = document.getElementById('cravingMM');
-        this.saveCravingBtn = document.getElementById('saveCraving');
-        
-        // Add smoke modal
-        this.smokeTitle = document.getElementById('smokeTitle');
-        this.smokeTimeDefaults = document.getElementById('smokeTimeDefaults');
-        this.smokeHH = document.getElementById('smokeHH');
-        this.smokeMM = document.getElementById('smokeMM');
-        this.cigaretteCountInput = document.getElementById('cigaretteCount');
-        this.saveSmokeBtn = document.getElementById('saveSmoke');
-        
-        // Info modal
-        this.infoTitle = document.getElementById('infoTitle');
-        this.timelineContent = document.getElementById('timelineContent');
-        this.dayNotes = document.getElementById('dayNotes');
-        this.saveNotesBtn = document.getElementById('saveNotes');
-        
-        // Edit day modal
-        this.editDayTitle = document.getElementById('editDayTitle');
-        this.cravingsList = document.getElementById('cravingsList');
-        this.smokedList = document.getElementById('smokedList');
-        this.addCravingEditBtn = document.getElementById('addCravingEdit');
-        this.addSmokeEditBtn = document.getElementById('addSmokeEdit');
-        this.deleteSelectedCravingsBtn = document.getElementById('deleteSelectedCravings');
-        this.deleteSelectedSmokedBtn = document.getElementById('deleteSelectedSmoked');
-        this.saveEditDayBtn = document.getElementById('saveEditDay');
-        
-        // Menu buttons
-        this.chartBtn = document.getElementById('chartBtn');
-        this.exportBtn = document.getElementById('exportBtn');
-        this.importBtn = document.getElementById('importBtn');
-        this.settingsMenuBtn = document.getElementById('settingsMenuBtn');
-        this.aboutBtn = document.getElementById('aboutBtn');
-        
-        // Chart elements
-        this.timeRange = document.getElementById('timeRange');
-        this.toggleSmoked = document.getElementById('toggleSmoked');
-        this.toggleCravings = document.getElementById('toggleCravings');
-        this.toggleIntensity = document.getElementById('toggleIntensity');
-        this.totalSmoked = document.getElementById('totalSmoked');
-        this.totalCravings = document.getElementById('totalCravings');
-        this.moneySpent = document.getElementById('moneySpent');
-        
-        // Import elements
-        this.csvFile = document.getElementById('csvFile');
-        this.confirmImportBtn = document.getElementById('confirmImport');
-        
-        // Toast & confirm modal
-        this.toast = document.getElementById('toastNotification');
-        this.confirmModal = document.getElementById('confirmModal');
-        this.confirmTitle = document.getElementById('confirmTitle');
-        this.confirmMessage = document.getElementById('confirmMessage');
-        this.confirmOk = document.getElementById('confirmOk');
-        this.confirmCancel = document.getElementById('confirmCancel');
-        this._confirmCallback = null;
-        
-        // Reset modal
-        this.resetModal = document.getElementById('resetModal');
-        this.resetBtn = document.getElementById('resetBtn');
-    }
-    
-    attachEventListeners() {
-        // Menu
-        this.menuToggle.addEventListener('click', () => this.openMenu());
-        this.closeMenuBtn.addEventListener('click', () => this.closeMenu());
-        this.menuOverlay.addEventListener('click', () => this.closeMenu());
-        
-        // Settings
-        this.saveSettingsBtn.addEventListener('click', () => this.saveSettings());
-        this.currencyInput.addEventListener('change', () => this.updateCurrencyPreview());
-        this.settingsMenuBtn.addEventListener('click', () => this.openSettings());
-        
-        // Create today modal
-        this.createTodayYes.addEventListener('click', () => this.createTodayEntry());
-        this.createTodayNo.addEventListener('click', () => this.closeCreateTodayModal());
-        
-        // Add craving modal
-        document.querySelector('.close-craving').addEventListener('click', () => this.closeAddCravingModal());
-        this.saveCravingBtn.addEventListener('click', () => this.saveCraving());
-        this.cravingHH.addEventListener('input', (e) => this.handleTimeInput(e, this.cravingHH, this.cravingMM));
-        this.cravingMM.addEventListener('input', (e) => this.handleTimeInput(e, this.cravingHH, this.cravingMM));
-        this.cravingHH.addEventListener('blur', () => this.handleTimeBlur(this.cravingHH, this.cravingMM));
-        this.cravingMM.addEventListener('blur', () => this.handleTimeBlur(this.cravingHH, this.cravingMM));
-        
-        // Add smoke modal
-        document.querySelector('.close-smoke').addEventListener('click', () => this.closeAddSmokeModal());
-        this.saveSmokeBtn.addEventListener('click', () => this.saveSmoke());
-        this.smokeHH.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
-        this.smokeMM.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
-        this.smokeHH.addEventListener('blur', () => this.handleTimeBlur(this.smokeHH, this.smokeMM));
-        this.smokeMM.addEventListener('blur', () => this.handleTimeBlur(this.smokeHH, this.smokeMM));
-        
-        // Number buttons
-        document.querySelectorAll('.number-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.adjustNumber(e));
-        });
-        
-        // Info modal
-        document.querySelector('.close-info').addEventListener('click', () => this.closeInfoModal());
-        this.saveNotesBtn.addEventListener('click', () => this.saveDayNotes());
-        
-        // Edit day modal
-        document.querySelector('.close-edit').addEventListener('click', () => this.closeEditDayModal());
-        this.addCravingEditBtn.addEventListener('click', () => this.addEmptyCravingEdit());
-        this.addSmokeEditBtn.addEventListener('click', () => this.addEmptySmokeEdit());
-        this.deleteSelectedCravingsBtn.addEventListener('click', () => this.deleteSelectedCravings());
-        this.deleteSelectedSmokedBtn.addEventListener('click', () => this.deleteSelectedSmoked());
-        this.saveEditDayBtn.addEventListener('click', () => this.saveEditDay());
-        
-        // Menu actions
-        this.chartBtn.addEventListener('click', () => this.openChartModal());
-        this.exportBtn.addEventListener('click', () => this.exportCSV());
-        this.importBtn.addEventListener('click', () => this.openImportModal());
-        this.aboutBtn.addEventListener('click', () => this.openAboutModal());
-        
-        // Chart controls
-        this.timeRange.addEventListener('change', () => this.updateChart());
-        this.toggleSmoked.addEventListener('click', () => this.toggleChartData('smoked'));
-        this.toggleCravings.addEventListener('click', () => this.toggleChartData('cravings'));
-        this.toggleIntensity.addEventListener('click', () => this.toggleChartData('intensity'));
-        
+        this.modals = {
+            settings:    $('settingsModal'),
+            createToday: $('createTodayModal'),
+            addCraving:  $('addCravingModal'),
+            addSmoke:    $('addSmokeModal'),
+            info:        $('infoModal'),
+            editDay:     $('editDayModal'),
+            chart:       $('chartModal'),
+            about:       $('aboutModal'),
+            import:      $('importModal'),
+            confirm:     $('confirmModal'),
+            reset:       $('resetModal'),
+        };
+
+        // Settings form
+        this.settingsTitle    = $('settingsTitle');
+        this.currencyInput    = $('currency');
+        this.priceInput       = $('cigarettePrice');
+        this.timezoneInput    = $('timezone');
+        this.currencySymbol   = $('currencySymbol');
+
+        // Create-today modal
+        this.createTodayTitle = $('createTodayTitle');
+
+        // Add-craving modal
+        this.cravingTitle      = $('cravingTitle');
+        this.smartTimeDefaults = $('smartTimeDefaults');
+        this.cravingHH         = $('cravingHH');
+        this.cravingMM         = $('cravingMM');
+        this.saveCravingBtn    = $('saveCraving');
+
+        // Add-smoke modal
+        this.smokeTitle        = $('smokeTitle');
+        this.smokeTimeDefaults = $('smokeTimeDefaults');
+        this.smokeHH           = $('smokeHH');
+        this.smokeMM           = $('smokeMM');
+        this.cigaretteCount    = $('cigaretteCount');
+        this.saveSmokeBtn      = $('saveSmoke');
+
+        // Info/timeline modal
+        this.infoTitle       = $('infoTitle');
+        this.timelineContent = $('timelineContent');
+        this.dayNotes        = $('dayNotes');
+
+        // Edit-day modal
+        this.editDayTitle    = $('editDayTitle');
+        this.cravingsList    = $('cravingsList');
+        this.smokedList      = $('smokedList');
+        this.deleteCravingsBtn = $('deleteSelectedCravings');
+        this.deleteSmokedBtn   = $('deleteSelectedSmoked');
+
+        // Chart
+        this.timeRange       = $('timeRange');
+        this.toggleSmoked    = $('toggleSmoked');
+        this.toggleCravings  = $('toggleCravings');
+        this.toggleIntensity = $('toggleIntensity');
+        this.statSmoked      = $('totalSmoked');
+        this.statCravings    = $('totalCravings');
+        this.statMoney       = $('moneySpent');
+
         // Import
-        document.querySelector('.close-import').addEventListener('click', () => this.closeImportModal());
-        this.confirmImportBtn.addEventListener('click', () => this.importCSV());
-        
-        // About modal
-        document.querySelector('.close-about').addEventListener('click', () => this.closeAboutModal());
-        document.querySelector('.close-chart').addEventListener('click', () => this.closeChartModal());
-        
-        // Reset modal
-        this.resetBtn.addEventListener('click', () => this.openResetModal());
-        document.querySelector('.close-reset').addEventListener('click', () => this.closeResetModal());
-        document.getElementById('cancelReset').addEventListener('click', () => this.closeResetModal());
-        document.getElementById('confirmReset').addEventListener('click', () => this.confirmReset());
-        
+        this.csvFile = $('csvFile');
+
+        // Toast & confirm
+        this.toast          = $('toastNotification');
+        this.confirmTitle   = $('confirmTitle');
+        this.confirmMessage = $('confirmMessage');
+        this.confirmOk      = $('confirmOk');
+        this.confirmCancel  = $('confirmCancel');
+    }
+
+    _bindListeners() {
+        // Menu
+        document.getElementById('menuToggle').addEventListener('click', () => this._openMenu());
+        document.getElementById('closeMenu').addEventListener('click',  () => this._closeMenu());
+        this.menuOverlay.addEventListener('click', () => this._closeMenu());
+
+        // Menu items
+        document.getElementById('chartBtn').addEventListener('click',
+            () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderChart(), 100); });
+        document.getElementById('exportBtn').addEventListener('click',
+            () => this._exportCSV());
+        document.getElementById('importBtn').addEventListener('click',
+            () => { this._closeMenu(); this._openModal('import'); });
+        document.getElementById('settingsMenuBtn').addEventListener('click',
+            () => this._openSettings());
+        document.getElementById('aboutBtn').addEventListener('click',
+            () => { this._closeMenu(); this._openModal('about'); });
+        document.getElementById('resetBtn').addEventListener('click',
+            () => { this._closeMenu(); this._openModal('reset'); });
+
+        // Settings
+        this.currencyInput.addEventListener('change',
+            () => { this.currencySymbol.textContent = this.currencyInput.value; });
+        document.getElementById('saveSettings').addEventListener('click',
+            () => this._saveSettings());
+
+        // Create-today modal
+        document.getElementById('createTodayYes').addEventListener('click',
+            () => this._createTodayEntry());
+        document.getElementById('createTodayNo').addEventListener('click', () => {
+            this._closeModal('createToday');
+            this._createTodayEntry();  // auto-create anyway
+        });
+
+        // Add-craving modal
+        document.querySelector('.close-craving').addEventListener('click',
+            () => this._closeModal('addCraving'));
+        this.saveCravingBtn.addEventListener('click', () => this._saveCraving());
+        this._bindTimeInputs(this.cravingHH, this.cravingMM,
+            () => this._updateSaveBtn('craving'));
+
+        // Intensity buttons (static in HTML — bind once)
+        document.querySelectorAll('.intensity-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.intensity-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                this._updateSaveBtn('craving');
+            });
+        });
+
+        // Add-smoke modal
+        document.querySelector('.close-smoke').addEventListener('click',
+            () => this._closeModal('addSmoke'));
+        this.saveSmokeBtn.addEventListener('click', () => this._saveSmoke());
+        this._bindTimeInputs(this.smokeHH, this.smokeMM,
+            () => this._updateSaveBtn('smoke'));
+        this.cigaretteCount.addEventListener('input', () => {
+            const v = parseInt(this.cigaretteCount.value);
+            if (v < 1 || isNaN(v)) this.cigaretteCount.value = 1;
+            this._updateSaveBtn('smoke');
+        });
+
+        // Number +/− buttons (static in HTML)
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const b     = e.target.closest('.number-btn');
+                const input = document.getElementById(b.dataset.target);
+                if (!input) return;
+                const v = parseInt(input.value) || 0;
+                input.value = b.classList.contains('plus') ? v + 1 : Math.max(1, v - 1);
+                if (b.dataset.target === 'cigaretteCount') this._updateSaveBtn('smoke');
+            });
+        });
+
+        // Info modal
+        document.querySelector('.close-info').addEventListener('click',
+            () => this._closeModal('info'));
+        document.getElementById('saveNotes').addEventListener('click',
+            () => this._saveNotes());
+
+        // Edit-day modal
+        document.querySelector('.close-edit').addEventListener('click',
+            () => this._closeModal('editDay'));
+        document.getElementById('addCravingEdit').addEventListener('click',
+            () => this._addEmptyCravingRow());
+        document.getElementById('addSmokeEdit').addEventListener('click',
+            () => this._addEmptySmokeRow());
+        this.deleteCravingsBtn.addEventListener('click',
+            () => this._deleteSelected('craving'));
+        this.deleteSmokedBtn.addEventListener('click',
+            () => this._deleteSelected('smoke'));
+        document.getElementById('saveEditDay').addEventListener('click',
+            () => this._saveEditDay());
+
+        // Chart controls
+        this.timeRange.addEventListener('change', () => this._renderChart());
+        this.toggleSmoked.addEventListener('click',
+            () => { this.toggleSmoked.classList.toggle('active'); this._renderChart(); });
+        this.toggleCravings.addEventListener('click',
+            () => { this.toggleCravings.classList.toggle('active'); this._renderChart(); });
+        this.toggleIntensity.addEventListener('click',
+            () => { this.toggleIntensity.classList.toggle('active'); this._renderChart(); });
+
+        // Chart / About / Import close buttons
+        document.querySelector('.close-chart').addEventListener('click',  () => this._closeChart());
+        document.querySelector('.close-about').addEventListener('click',  () => this._closeModal('about'));
+        document.querySelector('.close-import').addEventListener('click', () => this._closeModal('import'));
+        document.getElementById('confirmImport').addEventListener('click', () => this._importCSV());
+
         // Confirm modal
-        this.confirmCancel.addEventListener('click', () => this.closeConfirmModal());
         this.confirmOk.addEventListener('click', () => {
-            if (this._confirmCallback) this._confirmCallback();
-            this.closeConfirmModal();
+            if (this._confirmCb) this._confirmCb();
+            this._closeModal('confirm');
         });
-        
-        // Close modals on outside click
-        window.addEventListener('click', (e) => this.handleOutsideClick(e));
-    }
-    
-    checkFirstTimeSetup() {
-        if (!this.settings) {
-            // First time user - show settings modal
-            this.settingsModal.style.display = 'block';
-        } else {
-            // Existing user - check for today's entry
-            this.checkTodaysEntry();
-            this.loadEntries();
-        }
-    }
-    
-    loadTimezones() {
-        const timezones = [
-            'Asia/Kolkata', 'America/New_York', 'America/Los_Angeles',
-            'Europe/London', 'Europe/Paris', 'Asia/Tokyo',
-            'Australia/Sydney', 'Asia/Singapore', 'Asia/Dubai',
-            'America/Chicago', 'America/Toronto', 'Europe/Berlin'
-        ];
-        
-        timezones.forEach(tz => {
-            const option = document.createElement('option');
-            option.value = tz;
-            option.textContent = tz;
-            this.timezoneInput.appendChild(option);
-        });
-        
-        // Default to Indian timezone
-        this.timezoneInput.value = 'Asia/Kolkata';
-    }
-    
-    saveSettings() {
-        const currency = this.currencyInput.value;
-        const price = parseFloat(this.cigarettePriceInput.value);
-        const timezone = this.timezoneInput.value;
-        
-        if (!currency || isNaN(price) || price < 0.1 || !timezone) {
-            this.showToast('Please fill all fields correctly.');
-            return;
-        }
-        
-        if (!this.settings) {
-            // First time setup
-            this.settings = {
-                currency,
-                cigarettePrice: price,
-                timezone,
-                setupDate: new Date().toISOString()
-            };
-            
-            localStorage.setItem('ashless_v2_settings', JSON.stringify(this.settings));
-            this.settingsModal.style.display = 'none';
-            
-            // Show create today modal
-            this.showCreateTodayModal();
-        } else {
-            // Update only price
-            this.settings.cigarettePrice = price;
-            localStorage.setItem('ashless_v2_settings', JSON.stringify(this.settings));
-            
-            this.showToast('Price updated! New entries will use this price.');
-            this.settingsModal.style.display = 'none';
-        }
-    }
-    
-    updateCurrencyPreview() {
-        const selectedCurrency = this.currencyInput.value;
-        this.currencySymbolElement.textContent = selectedCurrency;
-    }
-    
-    showCreateTodayModal() {
-        const today = this.getTodayDate();
-        this.createTodayTitle.textContent = `No entry for ${today}. Create one?`;
-        this.createTodayModal.style.display = 'block';
-    }
-    
-    closeCreateTodayModal() {
-        this.createTodayModal.style.display = 'none';
-        this.createTodayEntry(); // Auto-create anyway
-    }
-    
-    createTodayEntry() {
-        const today = this.getTodayDate();
-        const entry = {
-            date: today,
-            cravings: [],
-            smoked: [],
-            notes: ''
-        };
-        
-        this.entries.push(entry);
-        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-        
-        this.createTodayModal.style.display = 'none';
-        this.loadEntries();
-    }
-    
-    checkTodaysEntry() {
-        const today = this.getTodayDate();
-        const hasToday = this.entries.some(entry => entry.date === today);
-        
-        if (!hasToday) {
-            // Create today's entry automatically
-            const entry = {
-                date: today,
-                cravings: [],
-                smoked: [],
-                notes: ''
-            };
-            
-            this.entries.push(entry);
-            localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-        }
-        
-        this.loadEntries();
-    }
-    
-    getTodayDate() {
-        const now = new Date();
-        const timezone = this.settings ? this.settings.timezone : 'Asia/Kolkata';
-        
-        // Convert to specified timezone
-        const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: timezone,
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-        });
-        
-        const parts = formatter.formatToParts(now);
-        const day = parts.find(p => p.type === 'day').value;
-        const month = parts.find(p => p.type === 'month').value;
-        const year = parts.find(p => p.type === 'year').value;
-        
-        return `${day}-${month}-${year}`;
-    }
-    
-    formatDateForDisplay(dateStr) {
-        const [day, month, year] = dateStr.split('-');
-        return {
-            day,
-            month,
-            year,
-            full: dateStr
-        };
-    }
-    
-    addPreviousDay() {
-        if (this.entries.length === 0) return;
-        
-        // Convert all dates to JS Date objects and find the minimum (oldest)
-        let oldestDate = null;
-        let oldestStr = null;
-        this.entries.forEach(entry => {
-            const [d, m, y] = entry.date.split('-').map(Number);
-            const dt = new Date(2000 + y, m - 1, d);
-            if (oldestDate === null || dt < oldestDate) {
-                oldestDate = dt;
-                oldestStr = entry.date;
+        this.confirmCancel.addEventListener('click', () => this._closeModal('confirm'));
+
+        // Reset modal
+        document.querySelector('.close-reset').addEventListener('click',  () => this._closeModal('reset'));
+        document.getElementById('cancelReset').addEventListener('click',  () => this._closeModal('reset'));
+        document.getElementById('confirmReset').addEventListener('click', () => this._doReset());
+
+        // Backdrop clicks
+        window.addEventListener('click', (e) => {
+            // Modals that must not close on backdrop: settings, createToday, confirm, reset
+            const locked = ['settings', 'createToday', 'confirm', 'reset'];
+            for (const [key, modal] of Object.entries(this.modals)) {
+                if (e.target === modal && !locked.includes(key)) {
+                    if (key === 'chart') this._closeChart();
+                    else                 this._closeModal(key);
+                    break;
+                }
             }
         });
-        
-        // Calculate the day before the oldest entry
-        oldestDate.setDate(oldestDate.getDate() - 1);
-        const prevDay   = String(oldestDate.getDate()).padStart(2, '0');
-        const prevMonth = String(oldestDate.getMonth() + 1).padStart(2, '0');
-        const prevYear  = String(oldestDate.getFullYear() - 2000).padStart(2, '0');
-        const prevDate  = `${prevDay}-${prevMonth}-${prevYear}`;
-        
-        // Guard: should never happen, but just in case
-        if (this.entries.some(entry => entry.date === prevDate)) {
-            this.showToast('Entry for that day already exists!');
+    }
+
+    // ── Boot / setup flow ─────────────────────────────────────────────────────
+
+    _boot() {
+        if (!this.settings) {
+            this._openModal('settings');
+        } else {
+            this._ensureTodayExists();
+            this._renderTable();
+        }
+    }
+
+    _populateTimezones() {
+        const zones = [
+            'Asia/Kolkata', 'America/New_York', 'America/Los_Angeles',
+            'Europe/London', 'Europe/Paris',    'Asia/Tokyo',
+            'Australia/Sydney', 'Asia/Singapore', 'Asia/Dubai',
+            'America/Chicago',  'America/Toronto', 'Europe/Berlin',
+        ];
+        zones.forEach(tz => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = tz;
+            this.timezoneInput.appendChild(opt);
+        });
+        this.timezoneInput.value = 'Asia/Kolkata';
+    }
+
+    _saveSettings() {
+        const currency = this.currencyInput.value;
+        const price    = parseFloat(this.priceInput.value);
+        const timezone = this.timezoneInput.value;
+
+        if (!currency || isNaN(price) || price < 0.1 || !timezone) {
+            this._toast('Please fill all fields correctly.');
             return;
         }
-        
-        this.entries.push({ date: prevDate, cravings: [], smoked: [], notes: '' });
-        
-        // Sort newest-first: directly compare JS Date objects
-        this.entries.sort((a, b) => {
-            const [dA, mA, yA] = a.date.split('-').map(Number);
-            const [dB, mB, yB] = b.date.split('-').map(Number);
-            return new Date(2000 + yB, mB - 1, dB) - new Date(2000 + yA, mA - 1, dA);
-        });
-        
-        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-        this.loadEntries();
+
+        if (!this.settings) {
+            // First-time setup
+            this.settings = { currency, cigarettePrice: price, timezone, setupDate: new Date().toISOString() };
+            this._persist('settings');
+            // Re-enable fields for next time settings is opened
+            this.currencyInput.disabled = false;
+            this.timezoneInput.disabled = false;
+            this._closeModal('settings');
+            this.createTodayTitle.textContent = `Start tracking for today (${this._today()})?`;
+            this._openModal('createToday');
+        } else {
+            // Price-only update
+            this.settings.cigarettePrice = price;
+            this._persist('settings');
+            this._toast('Price updated — applies to new entries only.');
+            this._closeModal('settings');
+        }
     }
-    
-    compareDates(dateA, dateB) {
-        const [dayA, monthA, yearA] = dateA.split('-').map(Number);
-        const [dayB, monthB, yearB] = dateB.split('-').map(Number);
-        
-        const dateObjA = new Date(2000 + yearA, monthA - 1, dayA);
-        const dateObjB = new Date(2000 + yearB, monthB - 1, dayB);
-        
-        return dateObjB - dateObjA; // For newest first
+
+    _openSettings() {
+        this._closeMenu();
+        if (this.settings) {
+            this.currencyInput.value    = this.settings.currency;
+            this.priceInput.value       = this.settings.cigarettePrice;
+            this.timezoneInput.value    = this.settings.timezone;
+            this.currencySymbol.textContent = this.settings.currency;
+            // Lock currency & timezone after first setup
+            this.currencyInput.disabled = true;
+            this.timezoneInput.disabled = true;
+            this.priceInput.disabled    = false;
+            this.settingsTitle.textContent = 'Settings';
+        }
+        this._openModal('settings');
     }
-    
-    loadEntries() {
+
+    // ── Date utilities ────────────────────────────────────────────────────────
+
+    _today() {
+        const tz    = this.settings?.timezone ?? 'Asia/Kolkata';
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz, day: '2-digit', month: '2-digit', year: '2-digit'
+        }).formatToParts(new Date());
+        const d = parts.find(p => p.type === 'day').value;
+        const m = parts.find(p => p.type === 'month').value;
+        const y = parts.find(p => p.type === 'year').value;
+        return `${d}-${m}-${y}`;
+    }
+
+    // "dd-mm-yy" → JS Date
+    _toDate(str) {
+        const [d, m, y] = str.split('-').map(Number);
+        return new Date(2000 + y, m - 1, d);
+    }
+
+    // Sort descending (newest first)
+    _byDateDesc(a, b) { return this._toDate(b.date) - this._toDate(a.date); }
+
+    // Sort ascending (earliest time first) for timeline & sorting within a day
+    _byTimeAsc(a, b) {
+        const [hA, mA] = a.time.split(':').map(Number);
+        const [hB, mB] = b.time.split(':').map(Number);
+        return (hA * 60 + mA) - (hB * 60 + mB);
+    }
+
+    // ── Entry helpers ─────────────────────────────────────────────────────────
+
+    _blankEntry(date) {
+        return { date, cravings: [], smoked: [], notes: '' };
+    }
+
+    _getEntry(date) {
+        return this.entries.find(e => e.date === date);
+    }
+
+    _getEntryIdx(date) {
+        return this.entries.findIndex(e => e.date === date);
+    }
+
+    _ensureTodayExists() {
+        const today = this._today();
+        if (!this.entries.some(e => e.date === today)) {
+            this.entries.push(this._blankEntry(today));
+            this._persist('entries');
+        }
+    }
+
+    _createTodayEntry() {
+        this._closeModal('createToday');
+        this._ensureTodayExists();
+        this._renderTable();
+    }
+
+    addPreviousDay() {
+        if (!this.entries.length) return;
+
+        // Find oldest entry
+        const oldest = this.entries.reduce((acc, e) =>
+            this._toDate(e.date) < this._toDate(acc.date) ? e : acc
+        );
+
+        const prev = new Date(this._toDate(oldest.date));
+        prev.setDate(prev.getDate() - 1);
+        const prevDate = [
+            String(prev.getDate()).padStart(2, '0'),
+            String(prev.getMonth() + 1).padStart(2, '0'),
+            String(prev.getFullYear() - 2000).padStart(2, '0'),
+        ].join('-');
+
+        if (this.entries.some(e => e.date === prevDate)) {
+            this._toast('Entry for that day already exists!');
+            return;
+        }
+
+        this.entries.push(this._blankEntry(prevDate));
+        this._persist('entries');
+        this._renderTable();
+    }
+
+    // ── Table rendering ───────────────────────────────────────────────────────
+
+    _renderTable() {
         this.entriesTable.innerHTML = '';
-        
-        if (this.entries.length === 0) {
-            this.entriesTable.innerHTML = `
-                <div class="empty-state">
-                    <p>No entries yet. Setting up your tracker...</p>
-                </div>
-            `;
+
+        if (!this.entries.length) {
+            this.entriesTable.innerHTML = '<div class="empty-state"><p>No entries yet.</p></div>';
             return;
         }
-        
-        // Sort entries newest first
-        this.entries.sort((a, b) => {
-            const [dA, mA, yA] = a.date.split('-').map(Number);
-            const [dB, mB, yB] = b.date.split('-').map(Number);
-            return new Date(2000 + yB, mB - 1, dB) - new Date(2000 + yA, mA - 1, dA);
-        });
-        
-        this.entries.forEach((entry) => {
+
+        this.entries.sort((a, b) => this._byDateDesc(a, b));
+
+        this.entries.forEach(entry => {
+            const [day, month, year] = entry.date.split('-');
+            const cravCount  = entry.cravings.length;
+            const smokeCount = entry.smoked.reduce((s, x) => s + x.count, 0);
+            const money      = entry.smoked.reduce((s, x) =>
+                s + x.count * (x.pricePerCigarette ?? this.settings.cigarettePrice), 0);
+
             const row = document.createElement('div');
             row.className = 'entry-row';
-            
-            const dateParts = this.formatDateForDisplay(entry.date);
-            const cravingsCount = entry.cravings.length;
-            const smokedCount = entry.smoked.reduce((sum, smoke) => sum + smoke.count, 0);
-            
-            // Calculate money spent with entry-specific prices
-            const moneySpent = entry.smoked.reduce((sum, smoke) => {
-                const price = smoke.pricePerCigarette || this.settings.cigarettePrice;
-                return sum + (smoke.count * price);
-            }, 0);
-            
             row.innerHTML = `
                 <div class="entry-cell date-cell">
-                    <div class="date-day">${dateParts.day}</div>
-                    <div class="date-month">${dateParts.month}</div>
-                    <div class="date-year">${dateParts.year}</div>
+                    <div class="date-day">${day}</div>
+                    <div class="date-month">${month}</div>
+                    <div class="date-year">${year}</div>
                 </div>
-                <div class="entry-cell clickable-cell ${cravingsCount === 0 ? 'value-zero' : 'value-positive'}" 
-                     data-date="${entry.date}" data-type="craving">
-                    ${cravingsCount}
-                </div>
-                <div class="entry-cell clickable-cell ${smokedCount === 0 ? 'value-zero' : 'value-positive'}" 
-                     data-date="${entry.date}" data-type="smoke">
-                    ${smokedCount}
-                </div>
-                <div class="entry-cell ${smokedCount === 0 ? 'value-zero' : 'value-positive'}">
-                    ${this.settings.currency}${moneySpent.toFixed(2)}
+                <div class="entry-cell clickable-cell ${cravCount  ? 'value-positive' : 'value-zero'}"
+                     data-date="${entry.date}" data-type="craving">${cravCount}</div>
+                <div class="entry-cell clickable-cell ${smokeCount ? 'value-positive' : 'value-zero'}"
+                     data-date="${entry.date}" data-type="smoke">${smokeCount}</div>
+                <div class="entry-cell ${smokeCount ? 'value-positive' : 'value-zero'}">
+                    ${this.settings.currency}${money.toFixed(2)}
                 </div>
                 <div class="entry-cell">
                     <button class="info-btn" data-date="${entry.date}">𝒊</button>
                 </div>
                 <div class="entry-cell">
                     <button class="edit-btn" data-date="${entry.date}">⋮</button>
-                </div>
-            `;
-            
+                </div>`;
             this.entriesTable.appendChild(row);
         });
-        
-        // Add the "Add previous day" row
-        this.addPreviousDayRow();
-        
-        // Attach event listeners to the new elements
-        this.attachRowEventListeners();
-    }
-    
-    addPreviousDayRow() {
+
+        // "Add previous day" row
         const addRow = document.createElement('div');
         addRow.className = 'add-previous-row';
         addRow.innerHTML = `
             <div class="add-previous-content">
-                <button class="add-previous-btn">
-                    <i class="fas fa-plus-circle"></i>
-                </button>
+                <button class="add-previous-btn"><i class="fas fa-plus-circle"></i></button>
                 <span class="add-previous-text">Add entry for previous day</span>
-            </div>
-        `;
-        
-        this.entriesTable.appendChild(addRow);
-        
-        // Add help text row
-        const helpRow = document.createElement('div');
-        helpRow.className = 'help-row';
-        helpRow.innerHTML = `
-            <p>• Tap 😩 or 🚬 in a row to add craving/cigarette</p>
-            <p>• Tap 𝒊 to view day's timeline & notes</p>
-            <p>• Tap ⋮ to edit/delete entries</p>
-        `;
-        
-        this.entriesTable.appendChild(helpRow);
-        
-        // Add event listener to the plus button
+            </div>`;
         addRow.querySelector('.add-previous-btn').addEventListener('click', () => this.addPreviousDay());
-    }
-    
-    attachRowEventListeners() {
-        // Craving cells
-        document.querySelectorAll('.entry-cell[data-type="craving"]').forEach(cell => {
-            cell.addEventListener('click', (e) => {
-                const date = e.currentTarget.dataset.date;
-                this.openAddCravingModal(date);
+        this.entriesTable.appendChild(addRow);
+
+        // Help text
+        const help = document.createElement('div');
+        help.className = 'help-row';
+        help.innerHTML = `
+            <p>• Tap 😩 or 🚬 in a row to log a craving or cigarette</p>
+            <p>• Tap 𝒊 to view the day's timeline &amp; notes</p>
+            <p>• Tap ⋮ to edit or delete entries</p>`;
+        this.entriesTable.appendChild(help);
+
+        // Row event listeners
+        this.entriesTable.querySelectorAll('.entry-cell[data-type]').forEach(cell => {
+            cell.addEventListener('click', () => {
+                if (cell.dataset.type === 'craving') this._openAddCraving(cell.dataset.date);
+                else                                  this._openAddSmoke(cell.dataset.date);
             });
         });
-        
-        // Smoke cells
-        document.querySelectorAll('.entry-cell[data-type="smoke"]').forEach(cell => {
-            cell.addEventListener('click', (e) => {
-                const date = e.currentTarget.dataset.date;
-                this.openAddSmokeModal(date);
-            });
+        this.entriesTable.querySelectorAll('.info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); this._openInfo(btn.dataset.date); });
         });
-        
-        // Info buttons
-        document.querySelectorAll('.info-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const date = e.currentTarget.dataset.date;
-                this.openInfoModal(date);
-            });
-        });
-        
-        // Edit buttons
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const date = e.currentTarget.dataset.date;
-                this.openEditDayModal(date);
-            });
+        this.entriesTable.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); this._openEditDay(btn.dataset.date); });
         });
     }
-    
-    openAddCravingModal(date) {
-        this.currentEditingDate = date;
-        this.cravingTitle.textContent = `Add Craving for ${date}`;
-        
-        // Clear previous selections
-        this.clearCravingModal();
-        
-        // Check if it's today
-        const today = this.getTodayDate();
-        const isToday = date === today;
-        
-        // Add smart time defaults if it's today
-        if (isToday) {
-            this.addSmartTimeDefaults(this.smartTimeDefaults, 'craving');
-        } else {
-            this.smartTimeDefaults.innerHTML = '<p>Enter time manually for past dates</p>';
-        }
-        
-        // Add intensity selector event listeners
-        document.querySelectorAll('.intensity-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.intensity-btn').forEach(b => b.classList.remove('selected'));
-                e.currentTarget.classList.add('selected');
-                this.checkCravingSaveButton();
-            });
-        });
-        
-        this.addCravingModal.style.display = 'block';
-    }
-    
-    clearCravingModal() {
-        document.querySelectorAll('.intensity-btn').forEach(btn => {
-            btn.classList.remove('selected');
-        });
-        
-        document.querySelectorAll('.time-btn').forEach(btn => {
-            btn.classList.remove('selected');
-        });
-        
+
+    // ── Add Craving modal ─────────────────────────────────────────────────────
+
+    _openAddCraving(date) {
+        this.activeDate = date;
+        this.cravingTitle.textContent = `Add Craving — ${date}`;
+        document.querySelectorAll('.intensity-btn, .time-btn').forEach(b => b.classList.remove('selected'));
         this.cravingHH.value = '';
         this.cravingMM.value = '';
         this.saveCravingBtn.disabled = true;
-    }
-    
-    addSmartTimeDefaults(container, type) {
-        const now = new Date();
-        const defaults = [
-            { label: 'Just now', minutes: 0 },
-            { label: '5 min ago', minutes: 5 },
-            { label: '15 min ago', minutes: 15 },
-            { label: '30 min ago', minutes: 30 },
-            { label: '1 hr ago', minutes: 60 },
-            { label: '2 hr ago', minutes: 120 }
-        ];
-        
-        container.innerHTML = '';
-        
-        defaults.forEach(defaultTime => {
-            const button = document.createElement('button');
-            button.className = 'time-btn';
-            button.textContent = defaultTime.label;
-            button.dataset.minutes = defaultTime.minutes;
-            
-            button.addEventListener('click', () => {
-                // Clear other selections
-                document.querySelectorAll('.time-btn').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-                button.classList.add('selected');
-                
-                // Calculate time
-                const targetTime = new Date(now.getTime() - defaultTime.minutes * 60000);
-                let hours = targetTime.getHours();
-                let minutes = targetTime.getMinutes();
-                
-                // Handle date boundary (if time goes to previous day)
-                const hhInput = type === 'craving' ? this.cravingHH : this.smokeHH;
-                const mmInput = type === 'craving' ? this.cravingMM : this.smokeMM;
-                
-                if (defaultTime.minutes > 0 && targetTime.getDate() !== now.getDate()) {
-                    // If crossing midnight, don't auto-fill (let user enter manually)
-                    hhInput.value = '';
-                    mmInput.value = '';
-                } else {
-                    hhInput.value = String(hours).padStart(2, '0');
-                    mmInput.value = String(minutes).padStart(2, '0');
-                }
-                
-                // Validate
-                this.validateTimeInput(hhInput, mmInput);
-                
-                // Check save button
-                if (type === 'craving') {
-                    this.checkCravingSaveButton();
-                } else {
-                    this.checkSmokeSaveButton();
-                }
-            });
-            
-            container.appendChild(button);
-        });
-    }
-    
-    handleTimeInput(event, hhInput, mmInput) {
-        let value = event.target.value.replace(/[^0-9]/g, '');
-        
-        // Limit to 2 digits
-        if (value.length > 2) value = value.slice(0, 2);
-        
-        // Clamp value range without padding yet
-        if (event.target === hhInput && value.length === 2) {
-            if (parseInt(value) > 23) value = '23';
+        if (date === this._today()) {
+            this._buildTimePresets(this.smartTimeDefaults, this.cravingHH, this.cravingMM,
+                () => this._updateSaveBtn('craving'));
+        } else {
+            this.smartTimeDefaults.innerHTML = '<p>Enter time manually for past dates</p>';
         }
-        if (event.target === mmInput && value.length === 2) {
-            if (parseInt(value) > 59) value = '59';
-        }
-        
-        event.target.value = value;
-        
-        // Auto-advance to MM only when 2 digits typed in HH
-        if (value.length === 2 && event.target === hhInput) {
-            mmInput.focus();
-            mmInput.select();
-        }
-        
-        // Light validation (no padding — padding happens on blur)
-        this.checkSaveButtons(hhInput, mmInput);
+        this._openModal('addCraving');
     }
-    
-    handleTimeBlur(hhInput, mmInput) {
-        // On blur, pad with leading zero and validate
-        if (hhInput.value.length === 1) hhInput.value = hhInput.value.padStart(2, '0');
-        if (mmInput.value.length === 1) mmInput.value = mmInput.value.padStart(2, '0');
-        this.validateTimeInput(hhInput, mmInput);
-        this.checkSaveButtons(hhInput, mmInput);
-    }
-    
-    checkSaveButtons(hhInput, mmInput) {
-        if (hhInput === this.cravingHH) {
-            this.checkCravingSaveButton();
-        } else if (hhInput === this.smokeHH) {
-            this.checkSmokeSaveButton();
-        }
-    }
-    
-    validateTimeInput(hhInput, mmInput) {
-        let hh = parseInt(hhInput.value);
-        let mm = parseInt(mmInput.value);
-        
-        const hhValid = !isNaN(hh) && hh >= 0 && hh <= 23 && hhInput.value !== '';
-        const mmValid = !isNaN(mm) && mm >= 0 && mm <= 59 && mmInput.value !== '';
-        
-        hhInput.classList.toggle('invalid', !hhValid);
-        mmInput.classList.toggle('invalid', !mmValid);
-        
-        return hhValid && mmValid;
-    }
-    
-    checkCravingSaveButton() {
-        const timeValid = this.validateTimeInput(this.cravingHH, this.cravingMM);
-        const intensitySelected = document.querySelector('.intensity-btn.selected');
-        this.saveCravingBtn.disabled = !(timeValid && intensitySelected);
-    }
-    
-    checkSmokeSaveButton() {
-        const timeValid = this.validateTimeInput(this.smokeHH, this.smokeMM);
-        const countValid = parseInt(this.cigaretteCountInput.value) > 0;
-        this.saveSmokeBtn.disabled = !(timeValid && countValid);
-    }
-    
-    saveCraving() {
-        const time = `${this.cravingHH.value}:${this.cravingMM.value}`;
-        const intensityBtn = document.querySelector('.intensity-btn.selected');
-        
-        if (!time || !intensityBtn) {
-            this.showToast('Please select both time and intensity');
+
+    _saveCraving() {
+        const hh  = this.cravingHH.value.padStart(2, '0');
+        const mm  = this.cravingMM.value.padStart(2, '0');
+        const sel = document.querySelector('.intensity-btn.selected');
+        if (!this._timeOk(this.cravingHH, this.cravingMM) || !sel) {
+            this._toast('Please enter a valid time and select intensity');
             return;
         }
-        
-        // Validate time format
-        if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-            this.showToast('Please enter a valid time (HH:MM)');
-            return;
-        }
-        
-        const intensity = intensityBtn.dataset.intensity;
-        const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-        
-        if (entryIndex === -1) {
-            this.showToast('Error: Entry not found');
-            return;
-        }
-        
-        // Add craving to entry
-        this.entries[entryIndex].cravings.push({
-            time,
-            intensity
-        });
-        
-        // Sort cravings by time
-        this.entries[entryIndex].cravings.sort((a, b) => {
-            const [hA, mA] = a.time.split(':').map(Number);
-            const [hB, mB] = b.time.split(':').map(Number);
-            return (hA * 60 + mA) - (hB * 60 + mB);
-        });
-        
-        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-        this.closeAddCravingModal();
-        this.loadEntries();
+        const idx = this._getEntryIdx(this.activeDate);
+        if (idx === -1) { this._toast('Error: entry not found'); return; }
+        this.entries[idx].cravings.push({ time: `${hh}:${mm}`, intensity: sel.dataset.intensity });
+        this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
+        this._persist('entries');
+        this._closeModal('addCraving');
+        this._renderTable();
     }
-    
-    closeAddCravingModal() {
-        this.addCravingModal.style.display = 'none';
-        this.currentEditingDate = null;
-    }
-    
-    openAddSmokeModal(date) {
-        this.currentEditingDate = date;
-        this.smokeTitle.textContent = `Smoked? for ${date}`;
-        
-        // Clear previous selections
-        this.clearSmokeModal();
-        
-        // Check if it's today
-        const today = this.getTodayDate();
-        const isToday = date === today;
-        
-        // Add smart time defaults if it's today
-        if (isToday) {
-            this.addSmartTimeDefaults(this.smokeTimeDefaults, 'smoke');
+
+    // ── Add Smoke modal ───────────────────────────────────────────────────────
+
+    _openAddSmoke(date) {
+        this.activeDate = date;
+        this.smokeTitle.textContent = `Log Cigarette — ${date}`;
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+        this.smokeHH.value = '';
+        this.smokeMM.value = '';
+        this.cigaretteCount.value = '1';
+        this.saveSmokeBtn.disabled = true;
+        if (date === this._today()) {
+            this._buildTimePresets(this.smokeTimeDefaults, this.smokeHH, this.smokeMM,
+                () => this._updateSaveBtn('smoke'));
         } else {
             this.smokeTimeDefaults.innerHTML = '<p>Enter time manually for past dates</p>';
         }
-        
-        // Add count input validation
-        this.cigaretteCountInput.addEventListener('input', () => {
-            let value = parseInt(this.cigaretteCountInput.value) || 1;
-            if (value < 1) value = 1;
-            this.cigaretteCountInput.value = value;
-            this.checkSmokeSaveButton();
-        });
-        
-        this.addSmokeModal.style.display = 'block';
+        this._openModal('addSmoke');
     }
-    
-    clearSmokeModal() {
-        document.querySelectorAll('.time-btn').forEach(btn => {
-            btn.classList.remove('selected');
-        });
-        
-        this.smokeHH.value = '';
-        this.smokeMM.value = '';
-        this.cigaretteCountInput.value = '1';
-        this.saveSmokeBtn.disabled = true;
-    }
-    
-    saveSmoke() {
-        const time = `${this.smokeHH.value}:${this.smokeMM.value}`;
-        const count = parseInt(this.cigaretteCountInput.value) || 1;
-        
-        if (!time || count < 1) {
-            this.showToast('Please enter both time and cigarette count');
+
+    _saveSmoke() {
+        const hh    = this.smokeHH.value.padStart(2, '0');
+        const mm    = this.smokeMM.value.padStart(2, '0');
+        const count = parseInt(this.cigaretteCount.value) || 1;
+        if (!this._timeOk(this.smokeHH, this.smokeMM)) {
+            this._toast('Please enter a valid time');
             return;
         }
-        
-        // Validate time format
-        if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-            this.showToast('Please enter a valid time (HH:MM)');
-            return;
-        }
-        
-        const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-        
-        if (entryIndex === -1) {
-            this.showToast('Error: Entry not found');
-            return;
-        }
-        
-        // Add smoke to entry with current price
-        this.entries[entryIndex].smoked.push({
-            time,
-            count,
+        const idx = this._getEntryIdx(this.activeDate);
+        if (idx === -1) { this._toast('Error: entry not found'); return; }
+        this.entries[idx].smoked.push({
+            time: `${hh}:${mm}`, count,
             pricePerCigarette: this.settings.cigarettePrice
         });
-        
-        // Sort smoked entries by time
-        this.entries[entryIndex].smoked.sort((a, b) => {
-            const [hA, mA] = a.time.split(':').map(Number);
-            const [hB, mB] = b.time.split(':').map(Number);
-            return (hA * 60 + mA) - (hB * 60 + mB);
+        this.entries[idx].smoked.sort((a, b) => this._byTimeAsc(a, b));
+        this._persist('entries');
+        this._closeModal('addSmoke');
+        this._renderTable();
+    }
+
+    // ── Smart time presets ────────────────────────────────────────────────────
+
+    _buildTimePresets(container, hhInput, mmInput, onChange) {
+        const now     = new Date();
+        const presets = [
+            { label: 'Just now',   min: 0   },
+            { label: '5 min ago',  min: 5   },
+            { label: '15 min ago', min: 15  },
+            { label: '30 min ago', min: 30  },
+            { label: '1 hr ago',   min: 60  },
+            { label: '2 hr ago',   min: 120 },
+        ];
+        container.innerHTML = '';
+        presets.forEach(({ label, min }) => {
+            const btn = document.createElement('button');
+            btn.className = 'time-btn';
+            btn.textContent = label;
+            btn.addEventListener('click', () => {
+                container.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                const target = new Date(now.getTime() - min * 60000);
+                if (min > 0 && target.getDate() !== now.getDate()) {
+                    hhInput.value = ''; mmInput.value = '';  // crossed midnight
+                } else {
+                    hhInput.value = String(target.getHours()).padStart(2, '0');
+                    mmInput.value = String(target.getMinutes()).padStart(2, '0');
+                }
+                onChange();
+            });
+            container.appendChild(btn);
         });
-        
-        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-        this.closeAddSmokeModal();
-        this.loadEntries();
     }
-    
-    closeAddSmokeModal() {
-        this.addSmokeModal.style.display = 'none';
-        this.currentEditingDate = null;
+
+    // ── Time input handling ───────────────────────────────────────────────────
+
+    // Attach input + blur listeners to an HH/MM pair.
+    // onChange is called after every change so callers can update their save button.
+    _bindTimeInputs(hhInput, mmInput, onChange) {
+        const onInput = (e) => {
+            let v = e.target.value.replace(/\D/g, '').slice(0, 2);
+            if (e.target === hhInput && v.length === 2 && parseInt(v) > 23) v = '23';
+            if (e.target === mmInput && v.length === 2 && parseInt(v) > 59) v = '59';
+            e.target.value = v;
+            // Auto-advance HH → MM after 2 digits
+            if (v.length === 2 && e.target === hhInput) { mmInput.focus(); mmInput.select(); }
+            onChange();
+        };
+        const onBlur = () => {
+            if (hhInput.value.length === 1) hhInput.value = hhInput.value.padStart(2, '0');
+            if (mmInput.value.length === 1) mmInput.value = mmInput.value.padStart(2, '0');
+            onChange();
+        };
+        hhInput.addEventListener('input', onInput);
+        mmInput.addEventListener('input', onInput);
+        hhInput.addEventListener('blur',  onBlur);
+        mmInput.addEventListener('blur',  onBlur);
     }
-    
-    openInfoModal(date) {
-        this.currentEditingDate = date;
-        this.infoTitle.textContent = `${date} Timeline`;
-        
-        const entry = this.entries.find(e => e.date === date);
-        if (!entry) {
-            this.showToast('Entry not found');
-            return;
+
+    // Returns true and clears invalid class if HH:MM is a valid time.
+    _timeOk(hhInput, mmInput) {
+        const hh = parseInt(hhInput.value);
+        const mm = parseInt(mmInput.value);
+        const ok = !isNaN(hh) && hh >= 0 && hh <= 23 && hhInput.value !== '' &&
+                   !isNaN(mm) && mm >= 0 && mm <= 59 && mmInput.value !== '';
+        hhInput.classList.toggle('invalid', !ok && hhInput.value !== '');
+        mmInput.classList.toggle('invalid', !ok && mmInput.value !== '');
+        return ok;
+    }
+
+    _updateSaveBtn(type) {
+        if (type === 'craving') {
+            const ok = this._timeOk(this.cravingHH, this.cravingMM) &&
+                       !!document.querySelector('.intensity-btn.selected');
+            this.saveCravingBtn.disabled = !ok;
+        } else {
+            const ok = this._timeOk(this.smokeHH, this.smokeMM) &&
+                       parseInt(this.cigaretteCount.value) > 0;
+            this.saveSmokeBtn.disabled = !ok;
         }
-        
-        // Display timeline
-        this.timelineContent.innerHTML = '';
-        
-        // Combine and sort all events by time
-        const allEvents = [];
-        
-        entry.cravings.forEach(craving => {
-            allEvents.push({
-                time: craving.time,
-                type: 'craving',
-                intensity: craving.intensity,
-                text: `Craving (${craving.intensity})`
-            });
-        });
-        
-        entry.smoked.forEach(smoke => {
-            allEvents.push({
-                time: smoke.time,
-                type: 'smoke',
-                count: smoke.count,
-                text: `Smoked (${smoke.count} cigarette${smoke.count > 1 ? 's' : ''})`
-            });
-        });
-        
-        // Sort by time
-        allEvents.sort((a, b) => {
-            const [hA, mA] = a.time.split(':').map(Number);
-            const [hB, mB] = b.time.split(':').map(Number);
-            return (hA * 60 + mA) - (hB * 60 + mB);
-        });
-        
-        // Display events
-        if (allEvents.length === 0) {
+    }
+
+    // ── Info / timeline modal ─────────────────────────────────────────────────
+
+    _openInfo(date) {
+        this.activeDate = date;
+        this.infoTitle.textContent = `${date} — Timeline`;
+        const entry = this._getEntry(date);
+        if (!entry) { this._toast('Entry not found'); return; }
+
+        const intensityColor = { low: 'var(--low-intensity)', medium: 'var(--medium-intensity)', high: 'var(--high-intensity)' };
+        const events = [
+            ...entry.cravings.map(c => ({ time: c.time, type: 'craving', intensity: c.intensity,
+                text: `Craving (${c.intensity})` })),
+            ...entry.smoked.map(s => ({ time: s.time, type: 'smoke',
+                text: `Smoked (${s.count} cigarette${s.count !== 1 ? 's' : ''})` })),
+        ].sort((a, b) => this._byTimeAsc(a, b));
+
+        if (!events.length) {
             this.timelineContent.innerHTML = '<p class="empty-timeline">No events recorded for this day.</p>';
         } else {
-            allEvents.forEach(event => {
-                const eventEl = document.createElement('div');
-                eventEl.className = 'timeline-entry';
-                
-                let emoji = '😩';
-                let intensityDot = '';
-                
-                if (event.type === 'craving') {
-                    emoji = '😩';
-                    let intensityColor = '';
-                    switch (event.intensity) {
-                        case 'low': intensityColor = 'var(--low-intensity)'; break;
-                        case 'medium': intensityColor = 'var(--medium-intensity)'; break;
-                        case 'high': intensityColor = 'var(--high-intensity)'; break;
-                    }
-                    intensityDot = `<span class="timeline-intensity" style="background-color: ${intensityColor}"></span>`;
-                } else {
-                    emoji = '🚬';
-                }
-                
-                eventEl.innerHTML = `
-                    <span class="timeline-time">${event.time}</span>
-                    <span class="timeline-emoji">${emoji}</span>
-                    <span class="timeline-text">${event.text}</span>
-                    ${intensityDot}
-                `;
-                
-                this.timelineContent.appendChild(eventEl);
+            this.timelineContent.innerHTML = '';
+            events.forEach(ev => {
+                const el  = document.createElement('div');
+                el.className = 'timeline-entry';
+                const dot = ev.type === 'craving'
+                    ? `<span class="timeline-intensity" style="background-color:${intensityColor[ev.intensity]}"></span>`
+                    : '';
+                el.innerHTML = `
+                    <span class="timeline-time">${ev.time}</span>
+                    <span class="timeline-emoji">${ev.type === 'craving' ? '😩' : '🚬'}</span>
+                    <span class="timeline-text">${ev.text}</span>${dot}`;
+                this.timelineContent.appendChild(el);
             });
         }
-        
-        // Load notes
         this.dayNotes.value = entry.notes || '';
-        
-        this.infoModal.style.display = 'block';
+        this._openModal('info');
     }
-    
-    saveDayNotes() {
-        const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-        
-        if (entryIndex === -1) {
-            this.showToast('Error: Entry not found');
-            return;
-        }
-        
-        this.entries[entryIndex].notes = this.dayNotes.value;
-        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-        
-        this.showToast('Notes saved ✓');
-        // Stay on the timeline — don't close the modal
+
+    _saveNotes() {
+        const idx = this._getEntryIdx(this.activeDate);
+        if (idx === -1) { this._toast('Error: entry not found'); return; }
+        this.entries[idx].notes = this.dayNotes.value;
+        this._persist('entries');
+        this._toast('Notes saved ✓');
     }
-    
-    closeInfoModal() {
-        this.infoModal.style.display = 'none';
-        this.currentEditingDate = null;
+
+    // ── Edit-day modal ────────────────────────────────────────────────────────
+
+    _openEditDay(date) {
+        this.activeDate = date;
+        this.editDayTitle.textContent = `Edit — ${date}`;
+        const entry = this._getEntry(date);
+        if (!entry) { this._toast('Entry not found'); return; }
+        this._renderCravingRows(entry.cravings);
+        this._renderSmokeRows(entry.smoked);
+        this._syncDeleteBtns();
+        this._openModal('editDay');
     }
-    
-    openEditDayModal(date) {
-        this.currentEditingDate = date;
-        this.editDayTitle.textContent = `Edit ${date}`;
-        
-        const entry = this.entries.find(e => e.date === date);
-        if (!entry) {
-            this.showToast('Entry not found');
-            return;
-        }
-        
-        // Display cravings for editing
-        this.displayCravingsForEdit(entry.cravings);
-        
-        // Display smoked for editing
-        this.displaySmokedForEdit(entry.smoked);
-        
-        // Update delete buttons state
-        this.updateDeleteButtonsState();
-        
-        this.editDayModal.style.display = 'block';
-    }
-    
-    displayCravingsForEdit(cravings) {
+
+    _renderCravingRows(cravings) {
         this.cravingsList.innerHTML = '';
-        
-        cravings.forEach((craving, index) => {
-            const cravingEl = this.createCravingEditItem(craving, index + 1);
-            this.cravingsList.appendChild(cravingEl);
-        });
+        cravings.forEach((c, i) => this.cravingsList.appendChild(this._makeCravingRow(c, i)));
     }
-    
-    createCravingEditItem(craving, number) {
-        const cravingEl = document.createElement('div');
-        cravingEl.className = 'edit-item';
-        cravingEl.innerHTML = `
-            <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="${number - 1}">
-            <span>${number}.</span>
+
+    _renderSmokeRows(smoked) {
+        this.smokedList.innerHTML = '';
+        smoked.forEach((s, i) => this.smokedList.appendChild(this._makeSmokeRow(s, i)));
+    }
+
+    _makeCravingRow(craving, index) {
+        const [hh = '', mm = ''] = (craving.time || '').split(':');
+        const el = document.createElement('div');
+        el.className = 'edit-item';
+        el.innerHTML = `
+            <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="${index}">
+            <span>${index + 1}.</span>
             <div class="edit-time-input">
-                <input type="text" inputmode="numeric" class="edit-hh" value="${craving.time.split(':')[0]}" maxlength="2" placeholder="HH">
+                <input type="text" inputmode="numeric" class="edit-hh" value="${hh}" maxlength="2" placeholder="HH">
                 <span>:</span>
-                <input type="text" inputmode="numeric" class="edit-mm" value="${craving.time.split(':')[1]}" maxlength="2" placeholder="MM">
+                <input type="text" inputmode="numeric" class="edit-mm" value="${mm}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-intensity-selector">
-                <button class="edit-intensity-btn low ${craving.intensity === 'low' ? 'selected' : ''}" data-intensity="low">🟢</button>
+                <button class="edit-intensity-btn low    ${craving.intensity === 'low'    ? 'selected' : ''}" data-intensity="low">🟢</button>
                 <button class="edit-intensity-btn medium ${craving.intensity === 'medium' ? 'selected' : ''}" data-intensity="medium">🟡</button>
-                <button class="edit-intensity-btn high ${craving.intensity === 'high' ? 'selected' : ''}" data-intensity="high">🔴</button>
-            </div>
-        `;
-        
-        // Add event listeners
-        const hhInput = cravingEl.querySelector('.edit-hh');
-        const mmInput = cravingEl.querySelector('.edit-mm');
-        const intensityBtns = cravingEl.querySelectorAll('.edit-intensity-btn');
-        const checkbox = cravingEl.querySelector('.edit-checkbox');
-        
-        hhInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
-        mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
-        hhInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
-        mmInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
-
-        intensityBtns.forEach(btn => {
+                <button class="edit-intensity-btn high   ${craving.intensity === 'high'   ? 'selected' : ''}" data-intensity="high">🔴</button>
+            </div>`;
+        const hhInput = el.querySelector('.edit-hh');
+        const mmInput = el.querySelector('.edit-mm');
+        // No save-button update needed for edit rows — just bind the inputs
+        this._bindTimeInputs(hhInput, mmInput, () => {});
+        el.querySelectorAll('.edit-intensity-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                intensityBtns.forEach(b => b.classList.remove('selected'));
+                el.querySelectorAll('.edit-intensity-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
             });
         });
-        
-        checkbox.addEventListener('change', () => this.updateDeleteButtonsState());
-        
-        return cravingEl;
+        el.querySelector('.edit-checkbox').addEventListener('change', () => this._syncDeleteBtns());
+        return el;
     }
-    
-    displaySmokedForEdit(smoked) {
-        this.smokedList.innerHTML = '';
-        
-        smoked.forEach((smoke, index) => {
-            const smokeEl = this.createSmokeEditItem(smoke, index + 1);
-            this.smokedList.appendChild(smokeEl);
-        });
-    }
-    
-    createSmokeEditItem(smoke, number) {
-        const smokeEl = document.createElement('div');
-        smokeEl.className = 'edit-item';
-        smokeEl.innerHTML = `
-            <input type="checkbox" class="edit-checkbox smoke-checkbox" data-index="${number - 1}">
-            <span>${number}.</span>
+
+    _makeSmokeRow(smoke, index) {
+        const [hh = '', mm = ''] = (smoke.time || '').split(':');
+        const el = document.createElement('div');
+        el.className = 'edit-item';
+        el.innerHTML = `
+            <input type="checkbox" class="edit-checkbox smoke-checkbox" data-index="${index}">
+            <span>${index + 1}.</span>
             <div class="edit-time-input">
-                <input type="text" inputmode="numeric" class="edit-hh" value="${smoke.time.split(':')[0]}" maxlength="2" placeholder="HH">
+                <input type="text" inputmode="numeric" class="edit-hh" value="${hh}" maxlength="2" placeholder="HH">
                 <span>:</span>
-                <input type="text" inputmode="numeric" class="edit-mm" value="${smoke.time.split(':')[1]}" maxlength="2" placeholder="MM">
+                <input type="text" inputmode="numeric" class="edit-mm" value="${mm}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-count-input">
                 <button type="button" class="number-btn minus small">−</button>
-                <input type="number" class="edit-count" value="${smoke.count}" min="1">
+                <input type="number" class="edit-count" value="${smoke.count || 1}" min="1">
                 <button type="button" class="number-btn plus small">+</button>
-            </div>
-        `;
-        
-        // Add event listeners
-        const hhInput = smokeEl.querySelector('.edit-hh');
-        const mmInput = smokeEl.querySelector('.edit-mm');
-        const countInput = smokeEl.querySelector('.edit-count');
-        const minusBtn = smokeEl.querySelector('.minus');
-        const plusBtn = smokeEl.querySelector('.plus');
-        const checkbox = smokeEl.querySelector('.edit-checkbox');
-        
-        hhInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
-        mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
-        hhInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
-        mmInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
+            </div>`;
+        const hhInput    = el.querySelector('.edit-hh');
+        const mmInput    = el.querySelector('.edit-mm');
+        const countInput = el.querySelector('.edit-count');
+        this._bindTimeInputs(hhInput, mmInput, () => {});
+        el.querySelector('.minus').addEventListener('click', () => {
+            countInput.value = Math.max(1, (parseInt(countInput.value) || 1) - 1);
+        });
+        el.querySelector('.plus').addEventListener('click', () => {
+            countInput.value = (parseInt(countInput.value) || 1) + 1;
+        });
+        el.querySelector('.edit-checkbox').addEventListener('change', () => this._syncDeleteBtns());
+        return el;
+    }
 
-        minusBtn.addEventListener('click', () => {
-            let value = parseInt(countInput.value) || 1;
-            if (value > 1) value--;
-            countInput.value = value;
-        });
-        
-        plusBtn.addEventListener('click', () => {
-            let value = parseInt(countInput.value) || 1;
-            value++;
-            countInput.value = value;
-        });
-        
-        checkbox.addEventListener('change', () => this.updateDeleteButtonsState());
-        
-        return smokeEl;
+    _addEmptyCravingRow() {
+        const idx = this.cravingsList.querySelectorAll('.edit-item').length;
+        this.cravingsList.appendChild(this._makeCravingRow({ time: '', intensity: '' }, idx));
     }
-    
-    addEmptyCravingEdit() {
-        const currentCount = this.cravingsList.querySelectorAll('.edit-item').length + 1;
-        const emptyCraving = { time: '', intensity: '' };
-        const cravingEl = this.createCravingEditItem(emptyCraving, currentCount);
-        this.cravingsList.appendChild(cravingEl);
+
+    _addEmptySmokeRow() {
+        const idx = this.smokedList.querySelectorAll('.edit-item').length;
+        this.smokedList.appendChild(this._makeSmokeRow({ time: '', count: 1 }, idx));
     }
-    
-    addEmptySmokeEdit() {
-        const currentCount = this.smokedList.querySelectorAll('.edit-item').length + 1;
-        const emptySmoke = { time: '', count: 1 };
-        const smokeEl = this.createSmokeEditItem(emptySmoke, currentCount);
-        this.smokedList.appendChild(smokeEl);
-    }
-    
-    deleteSelectedCravings() {
-        const checkboxes = document.querySelectorAll('.craving-checkbox:checked');
-        const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
-        
-        if (indices.length === 0) {
-            this.showToast('Please select cravings to delete');
+
+    _deleteSelected(type) {
+        const cls     = type === 'craving' ? '.craving-checkbox' : '.smoke-checkbox';
+        const checked = [...document.querySelectorAll(`${cls}:checked`)];
+        if (!checked.length) {
+            this._toast(`Select ${type === 'craving' ? 'cravings' : 'smoked entries'} to delete`);
             return;
         }
-        
-        this.showConfirm(
-            'Delete Cravings',
-            `Delete ${indices.length} selected craving(s)?`,
+        this._confirm(
+            `Delete ${type === 'craving' ? 'Cravings' : 'Smoked'}`,
+            `Delete ${checked.length} selected item(s)?`,
             () => {
-                const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-                if (entryIndex === -1) return;
-                indices.sort((a, b) => b - a).forEach(index => {
-                    if (index >= 0 && index < this.entries[entryIndex].cravings.length) {
-                        this.entries[entryIndex].cravings.splice(index, 1);
-                    }
-                });
-                this.displayCravingsForEdit(this.entries[entryIndex].cravings);
-                this.updateDeleteButtonsState();
+                const entryIdx = this._getEntryIdx(this.activeDate);
+                if (entryIdx === -1) return;
+                const arr = type === 'craving'
+                    ? this.entries[entryIdx].cravings
+                    : this.entries[entryIdx].smoked;
+                checked.map(cb => parseInt(cb.dataset.index))
+                       .sort((a, b) => b - a)
+                       .forEach(i => { if (i >= 0 && i < arr.length) arr.splice(i, 1); });
+                if (type === 'craving') this._renderCravingRows(this.entries[entryIdx].cravings);
+                else                    this._renderSmokeRows(this.entries[entryIdx].smoked);
+                this._syncDeleteBtns();
             }
         );
     }
-    
-    deleteSelectedSmoked() {
-        const checkboxes = document.querySelectorAll('.smoke-checkbox:checked');
-        const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
-        
-        if (indices.length === 0) {
-            this.showToast('Please select smoked entries to delete');
-            return;
-        }
-        
-        this.showConfirm(
-            'Delete Smoked',
-            `Delete ${indices.length} selected smoked entry/entries?`,
-            () => {
-                const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-                if (entryIndex === -1) return;
-                indices.sort((a, b) => b - a).forEach(index => {
-                    if (index >= 0 && index < this.entries[entryIndex].smoked.length) {
-                        this.entries[entryIndex].smoked.splice(index, 1);
-                    }
-                });
-                this.displaySmokedForEdit(this.entries[entryIndex].smoked);
-                this.updateDeleteButtonsState();
-            }
-        );
+
+    _syncDeleteBtns() {
+        this.deleteCravingsBtn.disabled = !document.querySelector('.craving-checkbox:checked');
+        this.deleteSmokedBtn.disabled   = !document.querySelector('.smoke-checkbox:checked');
     }
-    
-    updateDeleteButtonsState() {
-        const cravingChecked = document.querySelectorAll('.craving-checkbox:checked').length > 0;
-        const smokeChecked = document.querySelectorAll('.smoke-checkbox:checked').length > 0;
-        
-        this.deleteSelectedCravingsBtn.disabled = !cravingChecked;
-        this.deleteSelectedSmokedBtn.disabled = !smokeChecked;
-    }
-    
-    saveEditDay() {
-        const entryIndex = this.entries.findIndex(entry => entry.date === this.currentEditingDate);
-        if (entryIndex === -1) return;
-        
-        // Collect updated cravings
-        const updatedCravings = [];
-        const cravingItems = this.cravingsList.querySelectorAll('.edit-item');
-        
-        for (const item of cravingItems) {
-            const hhInput = item.querySelector('.edit-hh');
-            const mmInput = item.querySelector('.edit-mm');
-            const selectedIntensityBtn = item.querySelector('.edit-intensity-btn.selected');
-            
-            if (hhInput.value && mmInput.value && selectedIntensityBtn) {
-                const time = `${hhInput.value.padStart(2, '0')}:${mmInput.value.padStart(2, '0')}`;
-                const intensity = selectedIntensityBtn.dataset.intensity;
-                
-                if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-                    updatedCravings.push({ time, intensity });
-                }
-            }
-        }
-        
-        // Collect updated smoked entries
-        const updatedSmoked = [];
-        const smokedItems = this.smokedList.querySelectorAll('.edit-item');
-        
-        for (const item of smokedItems) {
-            const hhInput = item.querySelector('.edit-hh');
-            const mmInput = item.querySelector('.edit-mm');
-            const countInput = item.querySelector('.edit-count');
-            
-            if (hhInput.value && mmInput.value && countInput.value) {
-                const time = `${hhInput.value.padStart(2, '0')}:${mmInput.value.padStart(2, '0')}`;
-                const count = parseInt(countInput.value) || 1;
-                
-                if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time) && count > 0) {
-                    // Keep original price for existing entries, use current for new ones
-                    const originalIndex = parseInt(item.querySelector('.edit-checkbox').dataset.index);
-                    let pricePerCigarette = this.settings.cigarettePrice;
-                    
-                    if (originalIndex >= 0 && originalIndex < this.entries[entryIndex].smoked.length) {
-                        pricePerCigarette = this.entries[entryIndex].smoked[originalIndex].pricePerCigarette || this.settings.cigarettePrice;
-                    }
-                    
-                    updatedSmoked.push({ time, count, pricePerCigarette });
-                }
-            }
-        }
-        
-        // Sort by time
-        updatedCravings.sort((a, b) => {
-            const [hA, mA] = a.time.split(':').map(Number);
-            const [hB, mB] = b.time.split(':').map(Number);
-            return (hA * 60 + mA) - (hB * 60 + mB);
+
+    _saveEditDay() {
+        const entryIdx = this._getEntryIdx(this.activeDate);
+        if (entryIdx === -1) return;
+        const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+        const cravings = [];
+        this.cravingsList.querySelectorAll('.edit-item').forEach(item => {
+            const hh  = item.querySelector('.edit-hh').value.padStart(2, '0');
+            const mm  = item.querySelector('.edit-mm').value.padStart(2, '0');
+            const sel = item.querySelector('.edit-intensity-btn.selected');
+            const time = `${hh}:${mm}`;
+            if (TIME_RE.test(time) && sel) cravings.push({ time, intensity: sel.dataset.intensity });
         });
-        
-        updatedSmoked.sort((a, b) => {
-            const [hA, mA] = a.time.split(':').map(Number);
-            const [hB, mB] = b.time.split(':').map(Number);
-            return (hA * 60 + mA) - (hB * 60 + mB);
+
+        const smoked = [];
+        this.smokedList.querySelectorAll('.edit-item').forEach(item => {
+            const hh    = item.querySelector('.edit-hh').value.padStart(2, '0');
+            const mm    = item.querySelector('.edit-mm').value.padStart(2, '0');
+            const count = parseInt(item.querySelector('.edit-count').value) || 1;
+            const origIdx = parseInt(item.querySelector('.edit-checkbox').dataset.index);
+            const origSmoked = this.entries[entryIdx].smoked;
+            const price = (origIdx < origSmoked.length)
+                ? (origSmoked[origIdx].pricePerCigarette ?? this.settings.cigarettePrice)
+                : this.settings.cigarettePrice;
+            const time = `${hh}:${mm}`;
+            if (TIME_RE.test(time) && count > 0) smoked.push({ time, count, pricePerCigarette: price });
         });
-        
-        // Update entry
-        this.entries[entryIndex].cravings = updatedCravings;
-        this.entries[entryIndex].smoked = updatedSmoked;
-        
-        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-        
-        this.showToast('Changes saved successfully!');
-        this.closeEditDayModal();
-        this.loadEntries();
+
+        cravings.sort((a, b) => this._byTimeAsc(a, b));
+        smoked.sort((a, b) => this._byTimeAsc(a, b));
+
+        this.entries[entryIdx].cravings = cravings;
+        this.entries[entryIdx].smoked   = smoked;
+        this._persist('entries');
+        this._toast('Changes saved ✓');
+        this._closeModal('editDay');
+        this._renderTable();
     }
-    
-    closeEditDayModal() {
-        this.editDayModal.style.display = 'none';
-        this.currentEditingDate = null;
-    }
-    
-    // Menu functions
-    openMenu() {
-        this.sideMenu.style.right = '0';
-        this.menuOverlay.style.display = 'block';
-    }
-    
-    closeMenu() {
-        this.sideMenu.style.right = '-300px';
-        this.menuOverlay.style.display = 'none';
-    }
-    
-    openSettings() {
-        if (!this.settings) {
-            this.settingsModal.style.display = 'block';
-        } else {
-            // Show settings with only price editable
-            this.updateSettingsInputs();
-            this.settingsModal.style.display = 'block';
-            
-            // Disable currency and timezone, enable price
-            this.currencyInput.disabled = true;
-            this.timezoneInput.disabled = true;
-            this.cigarettePriceInput.disabled = false;
-            
-            // Update modal title and help text
-            this.settingsTitle.textContent = 'Settings (Price only)';
-            
-            const helpTexts = document.querySelectorAll('#settingsModal .help-text');
-            helpTexts[0].textContent = 'Currency cannot be changed';
-            helpTexts[1].textContent = 'Update price for new entries';
-            
-            // Remove existing price note if any
-            const existingNote = document.querySelector('#settingsModal .price-note');
-            if (existingNote) existingNote.remove();
-            
-            // Add a note about existing entries
-            const note = document.createElement('p');
-            note.className = 'help-text price-note';
-            note.textContent = 'Note: Existing entries will keep their original price';
-            note.style.color = 'var(--accent-color)';
-            note.style.marginTop = '10px';
-            this.settingsModal.querySelector('.settings-body').appendChild(note);
-        }
-        this.closeMenu();
-    }
-    
-    updateSettingsInputs() {
-        if (this.settings) {
-            this.currencyInput.value = this.settings.currency;
-            this.cigarettePriceInput.value = this.settings.cigarettePrice;
-            this.timezoneInput.value = this.settings.timezone;
-            this.updateCurrencyPreview();
-        }
-    }
-    
-    openChartModal() {
-        this.chartModal.style.display = 'block';
-        this.closeMenu();
-        setTimeout(() => this.updateChart(), 100);
-    }
-    
-    openAboutModal() {
-        this.aboutModal.style.display = 'block';
-        this.closeMenu();
-    }
-    
-    openImportModal() {
-        this.importModal.style.display = 'block';
-        this.closeMenu();
-    }
-    
-    closeImportModal() {
-        this.importModal.style.display = 'none';
-        this.csvFile.value = '';
-    }
-    
-    // Chart functions
-    updateChart() {
-        const days = parseInt(this.timeRange.value);
-        const today = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        
-        // Filter entries within date range
-        const filteredEntries = this.entries.filter(entry => {
-            const [day, month, year] = entry.date.split('-').map(Number);
-            const entryDate = new Date(2000 + year, month - 1, day);
-            return entryDate >= startDate && entryDate <= today;
-        });
-        
-        // Sort by date ascending for chart
-        filteredEntries.sort((a, b) => {
-            const [dayA, monthA, yearA] = a.date.split('-').map(Number);
-            const [dayB, monthB, yearB] = b.date.split('-').map(Number);
-            const dateA = new Date(2000 + yearA, monthA - 1, dayA);
-            const dateB = new Date(2000 + yearB, monthB - 1, dayB);
-            return dateA - dateB;
-        });
-        
-        const labels = filteredEntries.map(entry => entry.date);
-        const smokedData = filteredEntries.map(entry => 
-            entry.smoked.reduce((sum, smoke) => sum + smoke.count, 0)
-        );
-        const cravingsData = filteredEntries.map(entry => entry.cravings.length);
-        
-        // Calculate stats
-        const totalSmoked = smokedData.reduce((sum, val) => sum + val, 0);
-        const totalCravings = cravingsData.reduce((sum, val) => sum + val, 0);
-        const totalMoney = filteredEntries.reduce((sum, entry) => {
-            return sum + entry.smoked.reduce((entrySum, smoke) => {
-                const price = smoke.pricePerCigarette || this.settings.cigarettePrice;
-                return entrySum + (smoke.count * price);
-            }, 0);
-        }, 0);
-        
-        this.totalSmoked.textContent = totalSmoked;
-        this.totalCravings.textContent = totalCravings;
-        this.moneySpent.textContent = `${this.settings.currency}${totalMoney.toFixed(2)}`;
-        
-        // Destroy existing chart
-        if (this.chart) {
-            this.chart.destroy();
-        }
-        
-        // Create new chart
-        const ctx = document.getElementById('progressChart').getContext('2d');
-        
-        // Prepare datasets
+
+    // ── Chart ─────────────────────────────────────────────────────────────────
+
+    _renderChart() {
+        const days   = parseInt(this.timeRange.value);
+        const now    = new Date();
+        const cutoff = new Date(now);
+        cutoff.setDate(cutoff.getDate() - days);
+
+        const filtered = this.entries
+            .filter(e => { const d = this._toDate(e.date); return d >= cutoff && d <= now; })
+            .sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+
+        const smokedData   = filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0));
+        const cravingsData = filtered.map(e => e.cravings.length);
+        const totalMoney   = filtered.reduce((s, e) => s + e.smoked.reduce((es, x) =>
+            es + x.count * (x.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+
+        this.statSmoked.textContent   = smokedData.reduce((s, v) => s + v, 0);
+        this.statCravings.textContent = cravingsData.reduce((s, v) => s + v, 0);
+        this.statMoney.textContent    = `${this.settings.currency}${totalMoney.toFixed(2)}`;
+
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
+
+        // Read actual CSS variable values so Chart.js gets real colours, not var() strings
+        const style       = getComputedStyle(document.documentElement);
+        const textPrimary = style.getPropertyValue('--text-primary').trim()   || '#e0e0e0';
+        const textSecond  = style.getPropertyValue('--text-secondary').trim() || '#888888';
+        const accent      = style.getPropertyValue('--accent-color').trim()   || '#e07030';
+
         const datasets = [];
-        
+
         if (this.toggleSmoked.classList.contains('active')) {
             datasets.push({
                 label: 'Cigarettes Smoked',
                 data: smokedData,
-                borderColor: 'var(--chart-smoked)',
+                borderColor: '#e07030',
                 backgroundColor: 'transparent',
-                borderWidth: 2,
-                tension: 0.3,
-                fill: false
+                pointBackgroundColor: '#e07030',
+                borderWidth: 2, tension: 0.3,
             });
         }
-        
         if (this.toggleCravings.classList.contains('active')) {
             datasets.push({
                 label: 'Cravings',
                 data: cravingsData,
-                borderColor: 'var(--chart-cravings)',
+                borderColor: '#5090d0',
                 backgroundColor: 'transparent',
-                borderWidth: 2,
-                borderDash: [5, 5],
-                tension: 0.3,
-                fill: false
+                pointBackgroundColor: '#5090d0',
+                borderWidth: 2, tension: 0.3, borderDash: [5, 5],
             });
         }
-        
-        // Add intensity dots if enabled
         if (this.toggleIntensity.classList.contains('active')) {
-            // Create scatter plot for intensity
-            const intensityData = [];
-            
-            filteredEntries.forEach((entry, entryIndex) => {
-                entry.cravings.forEach(craving => {
-                    const [hours, minutes] = craving.time.split(':').map(Number);
-                    // Convert time to decimal hours for x-position
-                    const timeDecimal = hours + minutes / 60;
-                    
-                    intensityData.push({
-                        x: entryIndex + timeDecimal / 24,
-                        y: entry.cravings.length,
-                        intensity: craving.intensity
-                    });
-                });
+            const colorMap = { low: '#4caf50', medium: '#ff9800', high: '#f44336' };
+            const pts = filtered.flatMap((e, ei) =>
+                e.cravings.map(c => {
+                    const [h, m] = c.time.split(':').map(Number);
+                    return { x: ei + (h * 60 + m) / 1440, y: e.cravings.length, intensity: c.intensity };
+                })
+            );
+            if (pts.length) datasets.push({
+                label: 'Craving Intensity',
+                data: pts,
+                type: 'scatter',
+                pointBackgroundColor: pts.map(p => colorMap[p.intensity] || '#fff'),
+                pointBorderColor: '#fff', pointBorderWidth: 1, pointRadius: 6, showLine: false,
             });
-            
-            if (intensityData.length > 0) {
-                datasets.push({
-                    label: 'Craving Intensity',
-                    data: intensityData,
-                    type: 'scatter',
-                    pointBackgroundColor: intensityData.map(point => {
-                        switch (point.intensity) {
-                            case 'low': return 'var(--low-intensity)';
-                            case 'medium': return 'var(--medium-intensity)';
-                            case 'high': return 'var(--high-intensity)';
-                            default: return '#fff';
-                        }
-                    }),
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 1,
-                    pointRadius: 6,
-                    pointStyle: 'rect',
-                    showLine: false
-                });
-            }
         }
-        
-        this.chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            color: 'var(--text-primary)',
-                            font: {
-                                family: 'Consolas, Monaco, monospace'
-                            }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(30, 30, 30, 0.9)',
-                        titleColor: 'var(--accent-color)',
-                        bodyColor: 'var(--text-primary)',
-                        borderColor: 'var(--accent-color)',
-                        borderWidth: 1,
-                        cornerRadius: 6
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+
+        this.chart = new Chart(
+            document.getElementById('progressChart').getContext('2d'),
+            {
+                type: 'line',
+                data: { labels: filtered.map(e => e.date), datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true, position: 'top',
+                            labels: { color: textPrimary, font: { family: 'Consolas, Monaco, monospace' } },
                         },
-                        ticks: {
-                            color: 'var(--text-secondary)',
-                            maxRotation: 45,
-                            font: {
-                                family: 'Consolas, Monaco, monospace'
-                            }
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1,
-                            color: 'var(--text-secondary)',
-                            font: {
-                                family: 'Consolas, Monaco, monospace'
-                            }
+                        tooltip: {
+                            backgroundColor: 'rgba(30,30,30,0.9)',
+                            titleColor: accent, bodyColor: textPrimary,
+                            borderColor: accent, borderWidth: 1, cornerRadius: 6,
                         },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
+                    },
+                    scales: {
+                        x: {
+                            grid:  { color: 'rgba(255,255,255,0.08)' },
+                            ticks: { color: textSecond, maxRotation: 45,
+                                     font: { family: 'Consolas, Monaco, monospace' } },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid:  { color: 'rgba(255,255,255,0.08)' },
+                            ticks: { stepSize: 1, color: textSecond,
+                                     font: { family: 'Consolas, Monaco, monospace' } },
+                        },
+                    },
+                    animation: { duration: 600, easing: 'easeOutQuart' },
                 },
-                animation: {
-                    duration: 750,
-                    easing: 'easeOutQuart'
-                }
             }
+        );
+    }
+
+    _closeChart() {
+        this._closeModal('chart');
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
+    }
+
+    // ── Export / Import ───────────────────────────────────────────────────────
+
+    _exportCSV() {
+        if (!this.entries.length) { this._toast('No data to export'); return; }
+        const rows = ['Date,Time,Type,Intensity/Count,PricePerCigarette,Notes'];
+        this.entries.forEach(e => {
+            const notes = `"${(e.notes || '').replace(/"/g, '""')}"`;
+            e.cravings.forEach(c =>
+                rows.push([e.date, c.time, 'Craving', c.intensity, '', notes].join(',')));
+            e.smoked.forEach(s =>
+                rows.push([e.date, s.time, 'Smoked', s.count,
+                    s.pricePerCigarette ?? this.settings.cigarettePrice, notes].join(',')));
         });
-    }
-    
-    toggleChartData(type) {
-        const button = document.getElementById(`toggle${type.charAt(0).toUpperCase() + type.slice(1)}`);
-        button.classList.toggle('active');
-        this.updateChart();
-    }
-    
-    // Export/Import
-    exportCSV() {
-        if (this.entries.length === 0) {
-            this.showToast('No data to export!');
-            return;
-        }
-        
-        const headers = ['Date', 'Time', 'Type', 'Intensity/Count', 'PricePerCigarette', 'Notes'];
-        const csvRows = [headers.join(',')];
-        
-        this.entries.forEach(entry => {
-            // Export cravings
-            entry.cravings.forEach(craving => {
-                const row = [
-                    entry.date,
-                    craving.time,
-                    'Craving',
-                    craving.intensity,
-                    '',
-                    `"${entry.notes.replace(/"/g, '""')}"`
-                ];
-                csvRows.push(row.join(','));
-            });
-            
-            // Export smoked
-            entry.smoked.forEach(smoke => {
-                const row = [
-                    entry.date,
-                    smoke.time,
-                    'Smoked',
-                    smoke.count,
-                    smoke.pricePerCigarette || this.settings.cigarettePrice,
-                    `"${entry.notes.replace(/"/g, '""')}"`
-                ];
-                csvRows.push(row.join(','));
-            });
+        const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+        const a   = Object.assign(document.createElement('a'), {
+            href: url, download: `ashless_export_${new Date().toISOString().slice(0, 10)}.csv`,
         });
-        
-        const csvContent = csvRows.join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        
-        a.href = url;
-        a.download = `ashless_v2_export_${new Date().toISOString().slice(0,10)}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        
-        this.closeMenu();
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+        this._closeMenu();
     }
-    
-    importCSV() {
+
+    _importCSV() {
         const file = this.csvFile.files[0];
-        if (!file) {
-            this.showToast('Please select a CSV file to import.');
-            return;
-        }
-        
+        if (!file) { this._toast('Please select a CSV file'); return; }
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const content = e.target.result;
-                const rows = content.split('\n').filter(row => row.trim());
-                
-                if (rows.length < 2) {
-                    this.showToast('CSV file is empty or invalid.');
-                    return;
-                }
-                
-                const importedEntries = [];
-                const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
-                
-                // Group by date
-                const entriesByDate = {};
-                
+                const rows = e.target.result.split('\n').filter(r => r.trim());
+                if (rows.length < 2) { this._toast('CSV is empty or invalid'); return; }
+                const byDate = {};
                 for (let i = 1; i < rows.length; i++) {
-                    const cols = rows[i].split(',').map(col => col.trim());
-                    if (cols.length < 4) continue;
-                    
-                    const [date, time, type, value, price, ...notesParts] = cols;
-                    const notes = notesParts.join(',').replace(/^"|"$/g, '');
-                    
-                    if (!entriesByDate[date]) {
-                        entriesByDate[date] = {
-                            date,
-                            cravings: [],
-                            smoked: [],
-                            notes: notes || ''
-                        };
-                    }
-                    
+                    const [date, time, type, value, price, ...noteParts] =
+                        rows[i].split(',').map(s => s.trim());
+                    if (!date || !time) continue;
+                    const notes = noteParts.join(',').replace(/^"|"$/g, '');
+                    if (!byDate[date]) byDate[date] = this._blankEntry(date);
+                    if (!byDate[date].notes && notes) byDate[date].notes = notes;
                     if (type.toLowerCase() === 'craving') {
-                        entriesByDate[date].cravings.push({
-                            time,
-                            intensity: value.toLowerCase()
-                        });
+                        byDate[date].cravings.push({ time, intensity: value.toLowerCase() });
                     } else if (type.toLowerCase() === 'smoked') {
-                        entriesByDate[date].smoked.push({
-                            time,
-                            count: parseInt(value) || 1,
-                            pricePerCigarette: parseFloat(price) || this.settings.cigarettePrice
+                        byDate[date].smoked.push({
+                            time, count: parseInt(value) || 1,
+                            pricePerCigarette: parseFloat(price) || this.settings.cigarettePrice,
                         });
-                    }
-                    
-                    // Update notes if provided
-                    if (notes && !entriesByDate[date].notes) {
-                        entriesByDate[date].notes = notes;
                     }
                 }
-                
-                // Convert to array and sort
-                const importedEntriesArray = Object.values(entriesByDate);
-                importedEntriesArray.sort((a, b) => this.compareDates(a.date, b.date));
-                
-                this.showConfirm(
+                const imported = Object.values(byDate).sort((a, b) => this._byDateDesc(a, b));
+                this._confirm(
                     'Import Data',
-                    `Import ${importedEntriesArray.length} days of data? This will replace your current data.`,
+                    `Import ${imported.length} days of data? This replaces all current data.`,
                     () => {
-                        this.entries = importedEntriesArray;
-                        localStorage.setItem('ashless_v2_entries', JSON.stringify(this.entries));
-                        this.loadEntries();
-                        this.closeImportModal();
-                        this.showToast('Data imported successfully!');
+                        this.entries = imported;
+                        this._persist('entries');
+                        this._closeModal('import');
+                        this._renderTable();
+                        this._toast('Data imported successfully!');
                     }
                 );
-            } catch (error) {
-                this.showToast('Error reading CSV file. Please check the format.');
-                console.error(error);
+            } catch (err) {
+                this._toast('Error reading CSV — check the format');
+                console.error(err);
             }
         };
-        
         reader.readAsText(file);
     }
-    
-    // Helper functions
-    adjustNumber(event) {
-        const button = event.target.closest('.number-btn');
-        const targetId = button.dataset.target;
-        const input = document.getElementById(targetId);
-        const isPlus = button.classList.contains('plus');
-        
-        let value = parseInt(input.value) || 0;
-        value = isPlus ? value + 1 : Math.max(1, value - 1);
-        input.value = value;
-        
-        // Trigger validation
-        if (targetId === 'cigaretteCount') {
-            this.checkSmokeSaveButton();
-        }
+
+    // ── Modal management ──────────────────────────────────────────────────────
+
+    _openModal(key) {
+        this.modals[key].style.display = 'block';
     }
-    
-    handleOutsideClick(event) {
-        const modals = [
-            this.settingsModal, this.createTodayModal, this.addCravingModal,
-            this.addSmokeModal, this.infoModal, this.editDayModal,
-            this.chartModal, this.aboutModal, this.importModal,
-            this.confirmModal, this.resetModal
-        ];
-        
-        modals.forEach(modal => {
-            if (event.target === modal) {
-                switch(modal) {
-                    case this.settingsModal:
-                        // Don't allow closing settings modal without saving
-                        break;
-                    case this.addCravingModal:
-                        this.closeAddCravingModal();
-                        break;
-                    case this.addSmokeModal:
-                        this.closeAddSmokeModal();
-                        break;
-                    case this.infoModal:
-                        this.closeInfoModal();
-                        break;
-                    case this.editDayModal:
-                        this.closeEditDayModal();
-                        break;
-                    case this.chartModal:
-                        this.closeChartModal();
-                        break;
-                    case this.aboutModal:
-                        this.closeAboutModal();
-                        break;
-                    case this.importModal:
-                        this.closeImportModal();
-                        break;
-                    case this.confirmModal:
-                        this.closeConfirmModal();
-                        break;
-                    case this.resetModal:
-                        this.closeResetModal();
-                        break;
-                }
-            }
-        });
+
+    _closeModal(key) {
+        this.modals[key].style.display = 'none';
+        if (['addCraving', 'addSmoke', 'info', 'editDay'].includes(key)) this.activeDate = null;
+        if (key === 'confirm') this._confirmCb = null;
+        if (key === 'import')  this.csvFile.value = '';
     }
-    
-    // ── Helpers: Toast & Confirm ──────────────────────────────────────────
-    showToast(message, duration = 2200) {
-        this.toast.textContent = message;
+
+    _openMenu()  { this.sideMenu.style.right = '0'; this.menuOverlay.style.display = 'block'; }
+    _closeMenu() { this.sideMenu.style.right = '-300px'; this.menuOverlay.style.display = 'none'; }
+
+    // ── Reset ─────────────────────────────────────────────────────────────────
+
+    _doReset() {
+        this._closeModal('reset');
+        localStorage.removeItem('ashless_v2_entries');
+        localStorage.removeItem('ashless_v2_settings');
+        this.entries  = [];
+        this.settings = null;
+        this._boot();
+    }
+
+    // ── Toast & Confirm ───────────────────────────────────────────────────────
+
+    _toast(msg, ms = 2200) {
+        this.toast.textContent = msg;
         this.toast.style.display = 'block';
         this.toast.classList.add('visible');
         clearTimeout(this._toastTimer);
         this._toastTimer = setTimeout(() => {
             this.toast.classList.remove('visible');
             setTimeout(() => { this.toast.style.display = 'none'; }, 300);
-        }, duration);
+        }, ms);
     }
 
-    showConfirm(title, message, onConfirm) {
-        this.confirmTitle.textContent = title;
+    // Keep showToast as a public alias so any existing calls still work
+    showToast(msg, ms) { this._toast(msg, ms); }
+
+    _confirm(title, message, onConfirm) {
+        this.confirmTitle.textContent   = title;
         this.confirmMessage.textContent = message;
-        this._confirmCallback = onConfirm;
-        this.confirmModal.style.display = 'block';
+        this._confirmCb = onConfirm;
+        this._openModal('confirm');
     }
 
-    closeConfirmModal() {
-        this.confirmModal.style.display = 'none';
-        this._confirmCallback = null;
-    }
+    // ── Persistence ───────────────────────────────────────────────────────────
 
-    // ── Reset ─────────────────────────────────────────────────────────────
-    openResetModal() {
-        this.closeMenu();
-        this.resetModal.style.display = 'block';
-    }
-
-    closeResetModal() {
-        this.resetModal.style.display = 'none';
-    }
-
-    confirmReset() {
-        this.closeResetModal();
-        localStorage.removeItem('ashless_v2_entries');
-        localStorage.removeItem('ashless_v2_settings');
-        this.entries = [];
-        this.settings = null;
-        // Re-run setup flow — shows welcome/settings modal cleanly
-        this.checkFirstTimeSetup();
-    }
-
-    closeChartModal() {
-        this.chartModal.style.display = 'none';
-        if (this.chart) {
-            this.chart.destroy();
-            this.chart = null;
-        }
-    }
-    
-    closeAboutModal() {
-        this.aboutModal.style.display = 'none';
+    _persist(what) {
+        if (what === 'entries' || what === 'all')
+            localStorage.setItem('ashless_v2_entries',  JSON.stringify(this.entries));
+        if (what === 'settings' || what === 'all')
+            localStorage.setItem('ashless_v2_settings', JSON.stringify(this.settings));
     }
 }
 
-// Initialize the tracker when page loads
+// ── Boot ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    window.tracker = new AshlessTrackerV2();
+    window.tracker = new AshlessTracker();
 });
