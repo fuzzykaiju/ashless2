@@ -133,12 +133,16 @@ class AshlessTrackerV2 {
         this.saveCravingBtn.addEventListener('click', () => this.saveCraving());
         this.cravingHH.addEventListener('input', (e) => this.handleTimeInput(e, this.cravingHH, this.cravingMM));
         this.cravingMM.addEventListener('input', (e) => this.handleTimeInput(e, this.cravingHH, this.cravingMM));
+        this.cravingHH.addEventListener('blur', () => this.handleTimeBlur(this.cravingHH, this.cravingMM));
+        this.cravingMM.addEventListener('blur', () => this.handleTimeBlur(this.cravingHH, this.cravingMM));
         
         // Add smoke modal
         document.querySelector('.close-smoke').addEventListener('click', () => this.closeAddSmokeModal());
         this.saveSmokeBtn.addEventListener('click', () => this.saveSmoke());
         this.smokeHH.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
         this.smokeMM.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
+        this.smokeHH.addEventListener('blur', () => this.handleTimeBlur(this.smokeHH, this.smokeMM));
+        this.smokeMM.addEventListener('blur', () => this.handleTimeBlur(this.smokeHH, this.smokeMM));
         
         // Number buttons
         document.querySelectorAll('.number-btn').forEach(btn => {
@@ -628,26 +632,40 @@ class AshlessTrackerV2 {
     }
     
     handleTimeInput(event, hhInput, mmInput) {
-        // Get the input value
         let value = event.target.value.replace(/[^0-9]/g, '');
         
         // Limit to 2 digits
-        if (value.length > 2) {
-            value = value.slice(0, 2);
+        if (value.length > 2) value = value.slice(0, 2);
+        
+        // Clamp value range without padding yet
+        if (event.target === hhInput && value.length === 2) {
+            if (parseInt(value) > 23) value = '23';
+        }
+        if (event.target === mmInput && value.length === 2) {
+            if (parseInt(value) > 59) value = '59';
         }
         
-        // Update the input
         event.target.value = value;
         
-        // Auto-advance when 2 digits are entered
+        // Auto-advance to MM only when 2 digits typed in HH
         if (value.length === 2 && event.target === hhInput) {
             mmInput.focus();
+            mmInput.select();
         }
         
-        // Validate
+        // Light validation (no padding — padding happens on blur)
+        this.checkSaveButtons(hhInput, mmInput);
+    }
+    
+    handleTimeBlur(hhInput, mmInput) {
+        // On blur, pad with leading zero and validate
+        if (hhInput.value.length === 1) hhInput.value = hhInput.value.padStart(2, '0');
+        if (mmInput.value.length === 1) mmInput.value = mmInput.value.padStart(2, '0');
         this.validateTimeInput(hhInput, mmInput);
-        
-        // Check save button based on which modal is open
+        this.checkSaveButtons(hhInput, mmInput);
+    }
+    
+    checkSaveButtons(hhInput, mmInput) {
         if (hhInput === this.cravingHH) {
             this.checkCravingSaveButton();
         } else if (hhInput === this.smokeHH) {
@@ -656,37 +674,16 @@ class AshlessTrackerV2 {
     }
     
     validateTimeInput(hhInput, mmInput) {
-        let hh = parseInt(hhInput.value) || 0;
-        let mm = parseInt(mmInput.value) || 0;
+        let hh = parseInt(hhInput.value);
+        let mm = parseInt(mmInput.value);
         
-        // Auto-correct invalid values
-        if (hh < 0) hh = 0;
-        if (hh > 23) hh = 23;
-        if (mm < 0) mm = 0;
-        if (mm > 59) mm = 59;
+        const hhValid = !isNaN(hh) && hh >= 0 && hh <= 23 && hhInput.value !== '';
+        const mmValid = !isNaN(mm) && mm >= 0 && mm <= 59 && mmInput.value !== '';
         
-        // Update values with leading zeros
-        if (hhInput.value) {
-            hhInput.value = String(hh).padStart(2, '0');
-        }
-        if (mmInput.value) {
-            mmInput.value = String(mm).padStart(2, '0');
-        }
+        hhInput.classList.toggle('invalid', !hhValid);
+        mmInput.classList.toggle('invalid', !mmValid);
         
-        // Add invalid class if empty or invalid
-        if (!hhInput.value || hh < 0 || hh > 23) {
-            hhInput.classList.add('invalid');
-        } else {
-            hhInput.classList.remove('invalid');
-        }
-        
-        if (!mmInput.value || mm < 0 || mm > 59) {
-            mmInput.classList.add('invalid');
-        } else {
-            mmInput.classList.remove('invalid');
-        }
-        
-        return hhInput.value && mmInput.value && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
+        return hhValid && mmValid;
     }
     
     checkCravingSaveButton() {
@@ -764,10 +761,6 @@ class AshlessTrackerV2 {
         } else {
             this.smokeTimeDefaults.innerHTML = '<p>Enter time manually for past dates</p>';
         }
-        
-        // Add time input validation
-        this.smokeHH.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
-        this.smokeMM.addEventListener('input', (e) => this.handleTimeInput(e, this.smokeHH, this.smokeMM));
         
         // Add count input validation
         this.cigaretteCountInput.addEventListener('input', () => {
@@ -996,8 +989,8 @@ class AshlessTrackerV2 {
         
         hhInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
         mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
-        
-        intensityBtns.forEach(btn => {
+        hhInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
+        mmInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
             btn.addEventListener('click', () => {
                 intensityBtns.forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
@@ -1046,8 +1039,8 @@ class AshlessTrackerV2 {
         
         hhInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
         mmInput.addEventListener('input', (e) => this.handleTimeInput(e, hhInput, mmInput));
-        
-        minusBtn.addEventListener('click', () => {
+        hhInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
+        mmInput.addEventListener('blur', () => this.handleTimeBlur(hhInput, mmInput));
             let value = parseInt(countInput.value) || 1;
             if (value > 1) value--;
             countInput.value = value;
