@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ashless v2.8 - Quit Smoking Tracker</title>
+    <title>Ashless v2.9 - Quit Smoking Tracker</title>
     <meta name="theme-color" content="#121212">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,37 +19,31 @@
     <header class="fixed-header">
         <div class="header-content">
             <div class="title-section">
-                <h1>Ashless v2.8</h1>
-                <p id="lastSmokedTimer" class="tagline timer-label" aria-label="Tap for exact duration">
-                    Loading...
-                </p>
+                <h1>Ashless v2.9</h1>
+                <p id="lastSmokedTimer" class="tagline timer-label" aria-label="Tap for exact duration">Loading...</p>
                 <div id="timerPopover" class="timer-popover" style="display:none;"></div>
             </div>
             <button id="menuToggle" class="menu-btn" aria-label="Open menu">☰</button>
         </div>
-        
         <!-- Table Header -->
         <div class="table-header">
-            <div class="header-cell" data-tooltip="Date">📆</div>
-            <div class="header-cell" data-tooltip="Cravings">😩</div>
-            <div class="header-cell" data-tooltip="Cigarettes Smoked">🚬</div>
-            <div class="header-cell" data-tooltip="Money Spent">💵</div>
-            <div class="header-cell" data-tooltip="Info & Notes">𝒊</div>
-            <div class="header-cell" data-tooltip="Edit Day">⋮</div>
+            <div class="header-cell" data-tooltip="Date"><i class="fa-regular fa-calendar-days"></i></div>
+            <div class="header-cell" data-tooltip="Cravings"><i class="fa-solid fa-face-tired"></i></div>
+            <div class="header-cell" data-tooltip="Cigarettes Smoked"><i class="fa-solid fa-smoking"></i></div>
+            <div class="header-cell" data-tooltip="Money Spent"><i class="fa-solid fa-money-check-dollar"></i></div>
+            <div class="header-cell" data-tooltip="Info & Notes"><i class="fa-solid fa-circle-info"></i></div>
+            <div class="header-cell" data-tooltip="Edit Day"><i class="fa-solid fa-pen-to-square"></i></div>
         </div>
     </header>
 
     <!-- Main Content -->
     <main class="main-content">
         <div id="entriesTable" class="entries-table">
-            <!-- Entries will be dynamically added here -->
-            <div class="empty-state">
-                <p>Loading your journey...</p>
-            </div>
+            <div class="empty-state"><p>Loading your journey...</p></div>
         </div>
     </main>
 
-    <!-- Settings Modal (First Time/Onboarding) -->
+    <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -58,7 +52,6 @@
             </div>
             <div class="modal-body settings-body">
                 <p class="welcome-text">Set up your tracking preferences:</p>
-                
                 <div class="form-group">
                     <label for="currency">Currency:</label>
                     <select id="currency" class="time-select">
@@ -75,7 +68,6 @@
                     </select>
                     <p class="help-text">Currency cannot be changed after setup</p>
                 </div>
-                
                 <div class="form-group">
                     <label for="cigarettePrice">Price per cigarette:</label>
                     <div class="currency-input">
@@ -83,17 +75,13 @@
                         <input type="number" id="cigarettePrice" min="0.1" step="0.1" value="20">
                     </div>
                 </div>
-                
                 <div class="form-group">
                     <label for="timezone">Time Zone:</label>
-                    <select id="timezone" class="time-select">
-                        <!-- Timezone options will be populated by JavaScript -->
-                    </select>
+                    <select id="timezone" class="time-select"></select>
                     <p class="help-text">Timezone cannot be changed after setup</p>
                 </div>
-                
                 <div class="form-actions">
-                    <button id="saveSettings" class="save-btn">Start Tracking</button>
+                    <button id="saveSettings" class="btn btn-primary">Start Tracking</button>
                 </div>
             </div>
         </div>
@@ -105,11 +93,11 @@
             <div class="modal-header">
                 <h2 id="createTodayTitle"></h2>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="text-align:center;">
                 <p>Log habits, spot patterns, track progress, and take control.</p>
                 <p class="help-text">Everything you track is saved locally — never shared.</p>
                 <div class="form-actions">
-                    <button id="createTodayYes" class="save-btn">Continue</button>
+                    <button id="createTodayYes" class="btn btn-primary">Continue</button>
                 </div>
             </div>
         </div>
@@ -124,10 +112,8 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="cravingTime">Time:</label>
-                    <div id="smartTimeDefaults" class="smart-time-defaults">
-                        <!-- Smart time buttons will be added here -->
-                    </div>
+                    <label>Time:</label>
+                    <div id="smartTimeDefaults" class="smart-time-defaults"></div>
                     <div class="custom-time-input">
                         <span>Custom Time:</span>
                         <div class="time-input-group">
@@ -137,9 +123,8 @@
                         </div>
                     </div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="cravingIntensity">Craving Intensity:</label>
+                    <label>Craving Intensity:</label>
                     <div class="intensity-selector">
                         <button class="intensity-btn low" data-intensity="low">
                             <span class="intensity-emoji">🟢</span>
@@ -155,9 +140,8 @@
                         </button>
                     </div>
                 </div>
-                
                 <div class="form-actions">
-                    <button id="saveCraving" class="save-btn" disabled>Save Craving</button>
+                    <button id="saveCraving" class="btn btn-primary" disabled>Save Craving</button>
                 </div>
             </div>
         </div>
@@ -172,10 +156,8 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="smokeTime">Time:</label>
-                    <div id="smokeTimeDefaults" class="smart-time-defaults">
-                        <!-- Smart time buttons will be added here -->
-                    </div>
+                    <label>Time:</label>
+                    <div id="smokeTimeDefaults" class="smart-time-defaults"></div>
                     <div class="custom-time-input">
                         <span>Custom Time:</span>
                         <div class="time-input-group">
@@ -185,18 +167,16 @@
                         </div>
                     </div>
                 </div>
-                
                 <div class="form-group">
-                    <label for="cigaretteCount">Cigarettes Smoked:</label>
+                    <label>Cigarettes Smoked:</label>
                     <div class="number-input">
                         <button type="button" class="number-btn minus" data-target="cigaretteCount">−</button>
                         <input type="number" id="cigaretteCount" min="1" step="1" value="1">
                         <button type="button" class="number-btn plus" data-target="cigaretteCount">+</button>
                     </div>
                 </div>
-                
                 <div class="form-actions">
-                    <button id="saveSmoke" class="save-btn" disabled>Save</button>
+                    <button id="saveSmoke" class="btn btn-primary" disabled>Save</button>
                 </div>
             </div>
         </div>
@@ -210,14 +190,11 @@
                 <button class="close-btn close-info">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="timelineContent" class="timeline-content">
-                    <!-- Timeline entries will be added here -->
-                </div>
-                
+                <div id="timelineContent" class="timeline-content"></div>
                 <div class="notes-section">
-                    <h3>Notes for this day:</h3>
+                    <h3><i class="fa-regular fa-comment-dots"></i> Notes for this day:</h3>
                     <textarea id="dayNotes" rows="3" placeholder="Add notes about your day, triggers, feelings..."></textarea>
-                    <button id="saveNotes" class="save-btn">Save Notes</button>
+                    <button id="saveNotes" class="btn btn-primary">Save Notes</button>
                 </div>
             </div>
         </div>
@@ -231,32 +208,24 @@
                 <button class="close-btn close-edit">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Cravings Section -->
                 <div class="edit-section">
-                    <h3>😩 Cravings:</h3>
-                    <div id="cravingsList" class="edit-list">
-                        <!-- Cravings will be added here -->
-                    </div>
+                    <h3><i class="fa-solid fa-face-tired"></i> Cravings:</h3>
+                    <div id="cravingsList" class="edit-list"></div>
                     <div class="edit-actions">
-                        <button id="addCravingEdit" class="add-btn">➕ Add craving</button>
-                        <button id="deleteSelectedCravings" class="delete-btn" disabled>🚫 Delete selected</button>
+                        <button id="addCravingEdit" class="btn btn-secondary"><i class="fa-solid fa-plus"></i> Add craving</button>
+                        <button id="deleteSelectedCravings" class="btn btn-danger" disabled><i class="fa-solid fa-trash-can"></i> Delete selected</button>
                     </div>
                 </div>
-                
-                <!-- Smoked Section -->
                 <div class="edit-section">
-                    <h3>🚬 Smoked:</h3>
-                    <div id="smokedList" class="edit-list">
-                        <!-- Smoked entries will be added here -->
-                    </div>
+                    <h3><i class="fa-solid fa-smoking"></i> Smoked:</h3>
+                    <div id="smokedList" class="edit-list"></div>
                     <div class="edit-actions">
-                        <button id="addSmokeEdit" class="add-btn">➕ Add smoke</button>
-                        <button id="deleteSelectedSmoked" class="delete-btn" disabled>🚫 Delete selected</button>
+                        <button id="addSmokeEdit" class="btn btn-secondary"><i class="fa-solid fa-plus"></i> Add smoke</button>
+                        <button id="deleteSelectedSmoked" class="btn btn-danger" disabled><i class="fa-solid fa-trash-can"></i> Delete selected</button>
                     </div>
                 </div>
-                
                 <div class="form-actions">
-                    <button id="saveEditDay" class="save-btn">Save Changes</button>
+                    <button id="saveEditDay" class="btn btn-primary">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -270,27 +239,31 @@
         </div>
         <div class="menu-items">
             <button id="chartBtn" class="menu-item">
-                <span class="menu-icon">📊</span>
+                <span class="menu-icon"><i class="fa-solid fa-chart-line"></i></span>
                 <span>Show Chart</span>
             </button>
             <button id="exportBtn" class="menu-item">
-                <span class="menu-icon">📤</span>
+                <span class="menu-icon"><i class="fa-solid fa-upload"></i></span>
                 <span>Export CSV</span>
             </button>
             <button id="importBtn" class="menu-item">
-                <span class="menu-icon">📥</span>
+                <span class="menu-icon"><i class="fa-solid fa-download"></i></span>
                 <span>Import CSV</span>
             </button>
             <button id="settingsMenuBtn" class="menu-item">
-                <span class="menu-icon">⚙️</span>
+                <span class="menu-icon"><i class="fa-solid fa-sliders"></i></span>
                 <span>Settings</span>
             </button>
             <button id="aboutBtn" class="menu-item">
-                <span class="menu-icon">ℹ️</span>
-                <span>About v2.0</span>
+                <span class="menu-icon"><i class="fa-solid fa-book-open"></i></span>
+                <span>About v2.9</span>
+            </button>
+            <button id="readmeBtn" class="menu-item">
+                <span class="menu-icon"><i class="fa-brands fa-readme"></i></span>
+                <span>Read Me</span>
             </button>
             <button id="resetBtn" class="menu-item reset-menu-item">
-                <span class="menu-icon">🗑️</span>
+                <span class="menu-icon"><i class="fa-regular fa-trash-can"></i></span>
                 <span>Reset All Data</span>
             </button>
         </div>
@@ -305,9 +278,7 @@
                 <button class="close-btn close-chart">&times;</button>
             </div>
             <div class="modal-body chart-body">
-
-                <!-- Time range + stats -->
-                <select id="timeRange" class="time-select">
+                <select id="timeRange" class="time-select" style="display:block;margin:0 auto 0;">
                     <option value="7">Past 1 Week</option>
                     <option value="30">Past 1 Month</option>
                     <option value="90">Past 3 Months</option>
@@ -316,7 +287,6 @@
                     <option value="730">Past 2 Years</option>
                     <option value="1825">Past 5 Years</option>
                 </select>
-
                 <div class="chart-stats">
                     <div class="stat-item">
                         <span class="stat-label">Cigarettes</span>
@@ -331,8 +301,6 @@
                         <span id="moneySpent" class="stat-value">0</span>
                     </div>
                 </div>
-
-                <!-- Tabs -->
                 <div class="chart-tabs">
                     <button class="chart-tab active" data-tab="smoked">
                         <span class="tab-dot smoked-dot"></span> Smoked
@@ -344,18 +312,9 @@
                         <span class="tab-dot intensity-dot"></span> Intensity
                     </button>
                 </div>
-
-                <!-- Three canvases — only the active one is shown -->
-                <div class="chart-container" id="chartPanelSmoked">
-                    <canvas id="chartSmoked"></canvas>
-                </div>
-                <div class="chart-container" id="chartPanelCravings" style="display:none;">
-                    <canvas id="chartCravings"></canvas>
-                </div>
-                <div class="chart-container" id="chartPanelIntensity" style="display:none;">
-                    <canvas id="chartIntensity"></canvas>
-                </div>
-
+                <div class="chart-container" id="chartPanelSmoked"><canvas id="chartSmoked"></canvas></div>
+                <div class="chart-container" id="chartPanelCravings" style="display:none;"><canvas id="chartCravings"></canvas></div>
+                <div class="chart-container" id="chartPanelIntensity" style="display:none;"><canvas id="chartIntensity"></canvas></div>
             </div>
         </div>
     </div>
@@ -364,30 +323,35 @@
     <div id="aboutModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>About Ashless v2.0</h2>
+                <h2>About Ashless v2.9</h2>
                 <button class="close-btn close-about">&times;</button>
             </div>
             <div class="modal-body about-body">
-                <p>Ashless v2.0 introduces detailed tracking of every craving and cigarette with exact times and intensity levels.</p>
-                <h3>New Features:</h3>
-                <ul>
-                    <li>Track exact time of each craving</li>
-                    <li>Craving intensity (Low/Medium/High)</li>
-                    <li>Timeline view for each day</li>
-                    <li>Automatic daily entry creation</li>
-                    <li>Smart time inputs for today's entries</li>
-                    <li>Intensity visualization on charts</li>
-                </ul>
+                <p>Ashless is a privacy-first quit-smoking tracker. Everything runs in your browser — no accounts, no servers, no ads.</p>
                 <h3>How to use:</h3>
                 <ul>
-                    <li>Tap 😩 to add a craving with time & intensity</li>
-                    <li>Tap 🚬 to log a cigarette with time</li>
-                    <li>Tap 𝒊 to see day's timeline and add notes</li>
-                    <li>Tap ⋮ to edit/delete entries</li>
-                    <li>Green plus adds yesterday's entry automatically</li>
+                    <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
+                    <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
+                    <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
+                    <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
+                    <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days to acknowledge them</li>
+                    <li>Use the side menu for charts, export/import, and settings</li>
                 </ul>
                 <p class="motivation">"Every craving you resist brings you closer to freedom!"</p>
-                <div class="version">Version 2.0 | Made with ❤️ for a smoke-free life</div>
+                <div class="version">Version 2.9 | Made with ❤️ for a smoke-free life</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- README Modal -->
+    <div id="readmeModal" class="modal">
+        <div class="modal-content readme-modal">
+            <div class="modal-header">
+                <h2><i class="fa-brands fa-readme"></i> Read Me</h2>
+                <button class="close-btn close-readme">&times;</button>
+            </div>
+            <div class="modal-body readme-body" id="readmeBody">
+                <!-- Content rendered by JS -->
             </div>
         </div>
     </div>
@@ -401,8 +365,8 @@
             </div>
             <div class="modal-body">
                 <input type="file" id="csvFile" accept=".csv" class="file-input">
-                <p class="help-text">CSV Format v2.0: Date,Time,CravingIntensity/CigaretteCount</p>
-                <button id="confirmImport" class="save-btn">Import Data</button>
+                <p class="help-text">CSV Format: Date, Time, Type, Intensity/Count, Price, Notes</p>
+                <button id="confirmImport" class="btn btn-primary">Import Data</button>
             </div>
         </div>
     </div>
@@ -411,14 +375,14 @@
     <div id="skippedDayModal" class="modal">
         <div class="modal-content actions-modal">
             <div class="modal-header">
-                <h2 id="skippedDayTitle">⚠️ No Data Logged</h2>
+                <h2><i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-color);"></i> No Data Logged</h2>
             </div>
             <div class="modal-body" style="padding:20px;text-align:center;">
                 <p id="skippedDayMessage" style="margin-bottom:24px;color:var(--text-primary);"></p>
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                    <button id="skippedAddEntries" class="save-btn">Add Entries</button>
-                    <button id="skippedMarkClean" class="action-btn" style="background:rgba(76,175,80,0.15);border-color:#4caf50;color:#4caf50;">✓ Mark as Clean Day</button>
-                    <button id="skippedDismiss" class="cancel-btn" style="justify-content:center;">Dismiss</button>
+                <div class="skipped-btn-row">
+                    <button id="skippedAddEntries" class="btn btn-primary">Add Entries</button>
+                    <button id="skippedMarkClean" class="btn btn-clean">Mark as Clean Day</button>
+                    <button id="skippedDismiss" class="btn btn-ghost">Dismiss</button>
                 </div>
             </div>
         </div>
@@ -427,7 +391,7 @@
     <!-- Toast Notification -->
     <div id="toastNotification" class="toast" style="display:none;"></div>
 
-    <!-- Confirm Modal (replaces confirm() dialogs) -->
+    <!-- Confirm Modal -->
     <div id="confirmModal" class="modal">
         <div class="modal-content actions-modal">
             <div class="modal-header">
@@ -436,32 +400,32 @@
             <div class="modal-body" style="padding:20px;text-align:center;">
                 <p id="confirmMessage" style="margin-bottom:24px;color:var(--text-primary);"></p>
                 <div style="display:flex;gap:12px;justify-content:center;">
-                    <button id="confirmCancel" class="cancel-btn" style="flex:1;justify-content:center;">Cancel</button>
-                    <button id="confirmOk" class="action-btn delete-btn" style="flex:1;justify-content:center;border-color:var(--danger-color);">Confirm</button>
+                    <button id="confirmCancel" class="btn btn-ghost" style="flex:1;">Cancel</button>
+                    <button id="confirmOk" class="btn btn-danger" style="flex:1;">Confirm</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Reset Confirmation Modal -->
+    <!-- Reset Modal -->
     <div id="resetModal" class="modal">
         <div class="modal-content actions-modal">
             <div class="modal-header">
-                <h2 style="color:var(--danger-color);">⚠️ Reset All Data</h2>
+                <h2 style="color:var(--danger-color);"><i class="fa-solid fa-triangle-exclamation"></i> Reset All Data</h2>
                 <button class="close-btn close-reset">&times;</button>
             </div>
             <div class="modal-body" style="padding:20px;text-align:center;">
                 <p style="margin-bottom:12px;color:var(--text-primary);">This will permanently delete <strong>all entries and settings</strong>.</p>
                 <p style="margin-bottom:24px;color:var(--text-secondary);font-size:0.9rem;">This cannot be undone.</p>
                 <div style="display:flex;gap:12px;justify-content:center;">
-                    <button id="cancelReset" class="cancel-btn" style="flex:1;justify-content:center;">Cancel</button>
-                    <button id="confirmReset" class="action-btn delete-btn" style="flex:1;justify-content:center;border-color:var(--danger-color);">🗑️ Reset</button>
+                    <button id="cancelReset" class="btn btn-ghost" style="flex:1;">Cancel</button>
+                    <button id="confirmReset" class="btn btn-danger" style="flex:1;"><i class="fa-regular fa-trash-can"></i> Reset</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="script.js?v=10"></script>
+    <script src="script.js?v=11"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

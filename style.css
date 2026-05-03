@@ -714,57 +714,85 @@ input[type="number"] {
     align-items: center;
 }
 
-.save-btn {
-    padding: 15px 30px;
-    background-color: var(--accent-color);
-    color: var(--dark-grey);
-    border: none;
+/* ── Unified button system ──────────────────────────────────────────────── */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 20px;
     border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: bold;
+    border: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: normal;
     cursor: pointer;
-    transition: all 0.2s;
-    width: auto;
-    min-width: 150px;
-    max-width: 250px;
+    transition: background-color 0.2s, transform 0.1s, opacity 0.2s;
+    white-space: nowrap;
 }
 
-.save-btn:disabled {
+.btn:active { transform: scale(0.97); }
+
+/* Primary — amber fill, dark text, bold */
+.btn-primary {
+    background-color: var(--accent-color);
+    color: #1a1a1a;
+    font-weight: bold;
+    min-width: 120px;
+}
+.btn-primary:hover:not(:disabled) { background-color: var(--accent-light); }
+.btn-primary:disabled {
     background-color: var(--light-grey);
     color: var(--text-secondary);
     cursor: not-allowed;
     opacity: 0.6;
 }
 
-.save-btn:hover:not(:disabled) {
-    background-color: var(--accent-light);
+/* Secondary — dark grey fill, muted text */
+.btn-secondary {
+    background-color: var(--medium-grey);
+    color: var(--text-primary);
+    border: 1px solid var(--light-grey);
+}
+.btn-secondary:hover { background-color: var(--light-grey); }
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.cancel-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 15px;
+/* Danger — red fill, white text, bold */
+.btn-danger {
+    background-color: var(--danger-color);
+    color: #ffffff;
+    font-weight: bold;
+}
+.btn-danger:hover { background-color: #d32f2f; }
+.btn-danger:disabled {
+    background-color: var(--light-grey);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Ghost — transparent, muted text */
+.btn-ghost {
     background-color: #3d3d3d;
     color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
-    width: auto;
+    border: 1px solid var(--light-grey);
 }
+.btn-ghost:hover { background-color: #2f2f2f; }
 
-.cancel-btn:hover {
-    background-color: #2f2f2f;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+/* Clean day — green fill, dark text */
+.btn-clean {
+    background-color: var(--success-color);
+    color: #1a1a1a;
+    font-weight: bold;
 }
+.btn-clean:hover { background-color: #3d8b40; }
 
-.cancel-btn:active {
-    transform: scale(0.97);
-}
+/* Legacy aliases — keep old class names working for any remaining usage */
+.save-btn   { @extend .btn; }
+.cancel-btn { @extend .btn; }
 
 /* Currency Input */
 .currency-input {
@@ -1003,41 +1031,44 @@ input[type="number"] {
     gap: 10px;
 }
 
-.add-btn {
-    padding: 8px 15px;
-    background-color: var(--success-color);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+/* Edit modal action buttons use unified btn system */
+#addCravingEdit, #addSmokeEdit {
+    background-color: var(--medium-grey);
+    color: var(--text-primary);
+    border: 1px solid var(--light-grey);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: inherit;
     font-size: 0.9rem;
-    transition: all 0.2s;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
+#addCravingEdit:hover, #addSmokeEdit:hover { background-color: var(--light-grey); }
 
-.add-btn:hover {
-    background-color: #3d8b40;
-}
-
-.delete-btn {
-    padding: 8px 15px;
+#deleteSelectedCravings, #deleteSelectedSmoked {
     background-color: var(--danger-color);
-    color: white;
+    color: #fff;
     border: none;
-    border-radius: 6px;
-    cursor: pointer;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: inherit;
     font-size: 0.9rem;
-    transition: all 0.2s;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
-
-.delete-btn:disabled {
+#deleteSelectedCravings:disabled, #deleteSelectedSmoked:disabled {
     background-color: var(--light-grey);
     cursor: not-allowed;
     opacity: 0.6;
 }
-
-.delete-btn:hover:not(:disabled) {
-    background-color: #d32f2f;
-}
+#deleteSelectedCravings:hover:not(:disabled),
+#deleteSelectedSmoked:hover:not(:disabled) { background-color: #d32f2f; }
 
 /* Side Menu */
 .side-menu {
@@ -1134,9 +1165,10 @@ input[type="number"] {
     z-index: 9999;
     opacity: 0;
     transition: opacity 0.25s ease, transform 0.25s ease;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
     pointer-events: none;
-    max-width: 90vw;
+    max-width: calc(100vw - 40px);
     text-align: center;
 }
 
@@ -1293,6 +1325,59 @@ input[type="number"] {
     font-size: 1.1rem;
     padding: 4px;
     line-height: 1;
+}
+
+/* Skipped day modal — horizontal 3-button row */
+.skipped-btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: nowrap;
+}
+.skipped-btn-row .btn {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.82rem;
+    padding: 10px 8px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.3;
+}
+
+/* README modal */
+.readme-modal {
+    max-width: 680px;
+    max-height: 85vh;
+}
+.readme-body {
+    overflow-y: auto;
+    max-height: calc(85vh - 80px);
+    padding: 20px;
+}
+.readme-body h3 {
+    color: var(--accent-color);
+    margin: 18px 0 8px;
+    font-size: 1rem;
+}
+.readme-body h3:first-child { margin-top: 0; }
+.readme-body ul {
+    padding-left: 20px;
+    margin-bottom: 10px;
+}
+.readme-body li {
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.readme-body p {
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.readme-body .motivation {
+    color: var(--accent-color);
+    font-style: italic;
+    margin-top: 16px;
 }
 
 /* About Modal */

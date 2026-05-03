@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  Ashless v2.8  —  Quit Smoking Tracker
+//  Ashless v2.9  —  Quit Smoking Tracker
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AshlessTracker {
@@ -38,6 +38,7 @@ class AshlessTracker {
             editDay:     $('editDayModal'),
             chart:       $('chartModal'),
             about:       $('aboutModal'),
+            readme:      $('readmeModal'),
             import:      $('importModal'),
             confirm:     $('confirmModal'),
             reset:       $('resetModal'),
@@ -125,6 +126,8 @@ class AshlessTracker {
             () => this._openSettings());
         document.getElementById('aboutBtn').addEventListener('click',
             () => { this._closeMenu(); this._openModal('about'); });
+        document.getElementById('readmeBtn').addEventListener('click',
+            () => { this._closeMenu(); this._openReadme(); });
         document.getElementById('resetBtn').addEventListener('click',
             () => { this._closeMenu(); this._openModal('reset'); });
 
@@ -228,9 +231,10 @@ class AshlessTracker {
             tab.addEventListener('click', () => this._switchTab(tab.dataset.tab));
         });
 
-        // Chart / About / Import close buttons
+        // Chart / About / Readme / Import close buttons
         document.querySelector('.close-chart').addEventListener('click',  () => this._closeChart());
         document.querySelector('.close-about').addEventListener('click',  () => this._closeModal('about'));
+        document.querySelector('.close-readme').addEventListener('click', () => this._closeModal('readme'));
         document.querySelector('.close-import').addEventListener('click', () => this._closeModal('import'));
         document.getElementById('confirmImport').addEventListener('click', () => this._importCSV());
 
@@ -312,7 +316,7 @@ class AshlessTracker {
             // Price-only update
             this.settings.cigarettePrice = price;
             this._persist('settings');
-            this._toast('Price updated — applies to new entries only.');
+            this._toast('Settings saved successfully.');
             this._closeModal('settings');
         }
     }
@@ -488,8 +492,8 @@ class AshlessTracker {
 
             // Info button: ⚠️ for unacknowledged skipped days, 𝒊 otherwise
             const infoBtn = isSkipped
-                ? `<button class="info-btn skipped-btn" data-date="${entry.date}">⚠️</button>`
-                : `<button class="info-btn" data-date="${entry.date}">𝒊</button>`;
+                ? `<button class="info-btn skipped-btn" data-date="${entry.date}"><i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-color);"></i></button>`
+                : `<button class="info-btn" data-date="${entry.date}"><i class="fa-solid fa-angle-down"></i></button>`;
 
             row.innerHTML = `
                 <div class="entry-cell date-cell">
@@ -506,7 +510,7 @@ class AshlessTracker {
                 </div>
                 <div class="entry-cell">${infoBtn}</div>
                 <div class="entry-cell">
-                    <button class="edit-btn" data-date="${entry.date}">⋮</button>
+                    <button class="edit-btn" data-date="${entry.date}"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                 </div>`;
             this.entriesTable.appendChild(row);
         });
@@ -526,10 +530,10 @@ class AshlessTracker {
         const help = document.createElement('div');
         help.className = 'help-row';
         help.innerHTML = `
-            <p>• Tap 😩 or 🚬 in a row to log a craving or cigarette</p>
-            <p>• Tap 𝒊 to view the day's timeline &amp; notes</p>
-            <p>• Tap ⋮ to edit or delete entries</p>
-            <p>• Tap ⚠️ on skipped days to acknowledge them</p>`;
+            <p>• Tap <i class="fa-solid fa-face-tired"></i> or <i class="fa-solid fa-smoking"></i> in a row to log a craving or cigarette</p>
+            <p>• Tap <i class="fa-solid fa-angle-down"></i> to view the day's timeline &amp; notes</p>
+            <p>• Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</p>
+            <p>• Tap <i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-color);"></i> on skipped days to acknowledge them</p>`;
         this.entriesTable.appendChild(help);
 
         // Row event listeners
@@ -737,7 +741,7 @@ class AshlessTracker {
                     : '';
                 el.innerHTML = `
                     <span class="timeline-time">${ev.time}</span>
-                    <span class="timeline-emoji">${ev.type === 'craving' ? '😩' : '🚬'}</span>
+                    <span class="timeline-emoji">${ev.type === 'craving' ? '<i class="fa-solid fa-face-tired"></i>' : '<i class="fa-solid fa-smoking"></i>'}</span>
                     <span class="timeline-text">${ev.text}</span>${dot}`;
                 this.timelineContent.appendChild(el);
             });
@@ -1341,6 +1345,53 @@ class AshlessTracker {
         document.addEventListener('click', () => {
             this.popoverEl.style.display = 'none';
         });
+    }
+
+    // ── README modal ──────────────────────────────────────────────────────────
+
+    _openReadme() {
+        const body = document.getElementById('readmeBody');
+        body.innerHTML = `
+            <h3>Ashless v2.9 — Quit Smoking Tracker</h3>
+            <p>A privacy-first PWA to help you track cravings, cigarettes, and progress. Everything runs in your browser — no accounts, no servers, no ads.</p>
+
+            <h3>✨ Features</h3>
+            <ul>
+                <li>Daily log — cravings count, cigarettes smoked, money spent</li>
+                <li>Precise tracking — log each event with exact time</li>
+                <li>Intensity levels — low 🟢, medium 🟡, high 🔴 for every craving</li>
+                <li>Smart time presets — "just now", "5 min ago", "1 hour ago"</li>
+                <li>Timeline view — all events of a day in chronological order</li>
+                <li>Notes — add personal notes to each day</li>
+                <li>Full edit mode — modify or delete any entry</li>
+                <li>Interactive charts — smoked, cravings, and intensity breakdown</li>
+                <li>CSV export / import — backup or analyse your data elsewhere</li>
+                <li>Auto-detected skipped days — with option to mark as clean</li>
+                <li>Installable — works offline, add to home screen</li>
+            </ul>
+
+            <h3>📝 How to Use</h3>
+            <ul>
+                <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
+                <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
+                <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
+                <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
+                <li>Tap <i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-color);"></i> on skipped days to acknowledge them</li>
+                <li>Open the side menu ☰ for charts, export/import, and settings</li>
+            </ul>
+
+            <h3>🛠 Tech Stack</h3>
+            <ul>
+                <li>Plain HTML, CSS, Vanilla JS — no frameworks</li>
+                <li>Chart.js for charts, Font Awesome for icons</li>
+                <li>Browser localStorage for data</li>
+                <li>Service Worker + Web App Manifest for offline &amp; installability</li>
+            </ul>
+
+            <p class="motivation">"Every craving you resist brings you closer to freedom."</p>
+            <div class="version">v2.9 · <a href="https://github.com/fuzzykaiju/ashless2" target="_blank" rel="noopener" style="color:var(--accent-color);">GitHub</a> · MIT License</div>
+        `;
+        this._openModal('readme');
     }
 
     // ── Toast & Confirm ───────────────────────────────────────────────────────
