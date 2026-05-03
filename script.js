@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  Ashless v2.6  —  Quit Smoking Tracker
+//  Ashless v2.8  —  Quit Smoking Tracker
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AshlessTracker {
@@ -41,7 +41,11 @@ class AshlessTracker {
             import:      $('importModal'),
             confirm:     $('confirmModal'),
             reset:       $('resetModal'),
+            skippedDay:  $('skippedDayModal'),
         };
+
+        // Settings close button (hidden on first run)
+        this.closeSettingsBtn = $('closeSettings');
 
         // Settings form
         this.settingsTitle    = $('settingsTitle');
@@ -124,6 +128,10 @@ class AshlessTracker {
         document.getElementById('resetBtn').addEventListener('click',
             () => { this._closeMenu(); this._openModal('reset'); });
 
+        // Settings close button
+        document.getElementById('closeSettings').addEventListener('click',
+            () => this._closeModal('settings'));
+
         // Settings
         this.currencyInput.addEventListener('change',
             () => { this.currencySymbol.textContent = this.currencyInput.value; });
@@ -133,6 +141,26 @@ class AshlessTracker {
         // Create-today modal
         document.getElementById('createTodayYes').addEventListener('click',
             () => this._createTodayEntry());
+
+        // Skipped day modal
+        document.getElementById('skippedAddEntries').addEventListener('click', () => {
+            const date = this._skippedDayDate;
+            this._closeModal('skippedDay');
+            this._openEditDay(date);
+        });
+        document.getElementById('skippedMarkClean').addEventListener('click', () => {
+            const idx = this._getEntryIdx(this._skippedDayDate);
+            if (idx !== -1) {
+                this.entries[idx].skipped = false;
+                this.entries[idx].clean   = true;
+                this._persist('entries');
+            }
+            this._closeModal('skippedDay');
+            this._renderTable();
+        });
+        document.getElementById('skippedDismiss').addEventListener('click', () => {
+            this._closeModal('skippedDay');
+        });
 
         // Add-craving modal
         document.querySelector('.close-craving').addEventListener('click',
@@ -221,7 +249,7 @@ class AshlessTracker {
         // Backdrop clicks
         window.addEventListener('click', (e) => {
             // Modals that must not close on backdrop: settings, createToday, confirm, reset
-            const locked = ['settings', 'createToday', 'confirm', 'reset'];
+            const locked = ['settings', 'createToday', 'confirm', 'reset', 'skippedDay'];
             for (const [key, modal] of Object.entries(this.modals)) {
                 if (e.target === modal && !locked.includes(key)) {
                     if (key === 'chart') this._closeChart();
@@ -236,8 +264,9 @@ class AshlessTracker {
 
     _boot() {
         if (!this.settings) {
-            this._openModal('settings');
+            this._openSettings();
         } else {
+            this._backfillSkippedDays();
             this._ensureTodayExists();
             this._renderTable();
             this._startTimer();
@@ -295,11 +324,16 @@ class AshlessTracker {
             this.priceInput.value       = this.settings.cigarettePrice;
             this.timezoneInput.value    = this.settings.timezone;
             this.currencySymbol.textContent = this.settings.currency;
-            // Lock currency & timezone after first setup
             this.currencyInput.disabled = true;
             this.timezoneInput.disabled = true;
             this.priceInput.disabled    = false;
             this.settingsTitle.textContent = 'Settings';
+            document.getElementById('saveSettings').textContent = 'Save';
+            this.closeSettingsBtn.style.display = 'block';
+        } else {
+            // First run — no close button, start tracking label
+            document.getElementById('saveSettings').textContent = 'Start Tracking';
+            this.closeSettingsBtn.style.display = 'none';
         }
         this._openModal('settings');
     }
@@ -335,8 +369,8 @@ class AshlessTracker {
 
     // ── Entry helpers ─────────────────────────────────────────────────────────
 
-    _blankEntry(date) {
-        return { date, cravings: [], smoked: [], notes: '' };
+    _blankEntry(date, skipped = false) {
+        return { date, cravings: [], smoked: [], notes: '', skipped, clean: false };
     }
 
     _getEntry(date) {
@@ -345,6 +379,45 @@ class AshlessTracker {
 
     _getEntryIdx(date) {
         return this.entries.findIndex(e => e.date === date);
+    }
+
+    // Auto-create entries for any days skipped in the past 30 days
+    _backfillSkippedDays() {
+        const today   = this._today();
+        const todayDt = this._toDate(today);
+        const added   = [];
+
+        for (let i = 1; i <= 30; i++) {
+            const dt = new Date(todayDt);
+            dt.setDate(dt.getDate() - i);
+            const d = String(dt.getDate()).padStart(2, '0');
+            const m = String(dt.getMonth() + 1).padStart(2, '0');
+            const y = String(dt.getFullYear() - 2000).padStart(2, '0');
+            const dateStr = `${d}-${m}-${y}`;
+
+            // Only backfill if we have at least one entry older than this date
+            // (i.e. the user has been using the app long enough)
+            const hasOlderEntry = this.entries.some(e =>
+                this._toDate(e.date) <= this._toDate(dateStr)
+            );
+            if (!hasOlderEntry) break;
+
+            if (!this.entries.some(e => e.date === dateStr)) {
+                added.push(this._blankEntry(dateStr, true));
+            }
+        }
+
+        if (added.length) {
+            this.entries.push(...added);
+            this._persist('entries');
+        }
+    }
+
+    _openSkippedDay(date) {
+        this._skippedDayDate = date;
+        document.getElementById('skippedDayMessage').textContent =
+            `No data was logged for ${date}. You can add entries or dismiss to keep it as a clean day.`;
+        this._openModal('skippedDay');
     }
 
     _ensureTodayExists() {
@@ -407,8 +480,17 @@ class AshlessTracker {
             const money      = entry.smoked.reduce((s, x) =>
                 s + x.count * (x.pricePerCigarette ?? this.settings.cigarettePrice), 0);
 
+            const isSkipped = entry.skipped && !entry.clean &&
+                              !entry.cravings.length && !entry.smoked.length;
+
             const row = document.createElement('div');
-            row.className = 'entry-row';
+            row.className = `entry-row${isSkipped ? ' entry-skipped' : ''}`;
+
+            // Info button: ⚠️ for unacknowledged skipped days, 𝒊 otherwise
+            const infoBtn = isSkipped
+                ? `<button class="info-btn skipped-btn" data-date="${entry.date}">⚠️</button>`
+                : `<button class="info-btn" data-date="${entry.date}">𝒊</button>`;
+
             row.innerHTML = `
                 <div class="entry-cell date-cell">
                     <div class="date-day">${day}</div>
@@ -422,9 +504,7 @@ class AshlessTracker {
                 <div class="entry-cell ${smokeCount ? 'value-positive' : 'value-zero'}">
                     ${this.settings.currency}${money.toFixed(2)}
                 </div>
-                <div class="entry-cell">
-                    <button class="info-btn" data-date="${entry.date}">𝒊</button>
-                </div>
+                <div class="entry-cell">${infoBtn}</div>
                 <div class="entry-cell">
                     <button class="edit-btn" data-date="${entry.date}">⋮</button>
                 </div>`;
@@ -449,7 +529,7 @@ class AshlessTracker {
             <p>• Tap 😩 or 🚬 in a row to log a craving or cigarette</p>
             <p>• Tap 𝒊 to view the day's timeline &amp; notes</p>
             <p>• Tap ⋮ to edit or delete entries</p>
-            <p>• A zero-entry will be created automatically at 00:00 each day</p>`;
+            <p>• Tap ⚠️ on skipped days to acknowledge them</p>`;
         this.entriesTable.appendChild(help);
 
         // Row event listeners
@@ -459,8 +539,11 @@ class AshlessTracker {
                 else                                  this._openAddSmoke(cell.dataset.date);
             });
         });
-        this.entriesTable.querySelectorAll('.info-btn').forEach(btn => {
+        this.entriesTable.querySelectorAll('.info-btn:not(.skipped-btn)').forEach(btn => {
             btn.addEventListener('click', (e) => { e.stopPropagation(); this._openInfo(btn.dataset.date); });
+        });
+        this.entriesTable.querySelectorAll('.skipped-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.stopPropagation(); this._openSkippedDay(btn.dataset.date); });
         });
         this.entriesTable.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => { e.stopPropagation(); this._openEditDay(btn.dataset.date); });
@@ -497,6 +580,8 @@ class AshlessTracker {
         if (idx === -1) { this._toast('Error: entry not found'); return; }
         this.entries[idx].cravings.push({ time: `${hh}:${mm}`, intensity: sel.dataset.intensity });
         this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
+        // If this was a skipped day, it now has data — clear the flag
+        if (this.entries[idx].skipped) this.entries[idx].skipped = false;
         this._persist('entries');
         this._closeModal('addCraving');
         this._renderTable();
@@ -536,6 +621,7 @@ class AshlessTracker {
             pricePerCigarette: this.settings.cigarettePrice
         });
         this.entries[idx].smoked.sort((a, b) => this._byTimeAsc(a, b));
+        if (this.entries[idx].skipped) this.entries[idx].skipped = false;
         this._persist('entries');
         this._closeModal('addSmoke');
         this._renderTable();
@@ -827,6 +913,10 @@ class AshlessTracker {
 
         this.entries[entryIdx].cravings = cravings;
         this.entries[entryIdx].smoked   = smoked;
+        // Clear skipped flag if entries were added
+        if ((cravings.length || smoked.length) && this.entries[entryIdx].skipped) {
+            this.entries[entryIdx].skipped = false;
+        }
         this._persist('entries');
         this._toast('Changes saved ✓');
         this._closeModal('editDay');
