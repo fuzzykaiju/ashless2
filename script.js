@@ -1309,24 +1309,29 @@ class AshlessTracker {
         tick();
         this._timerInterval = setInterval(tick, 60000);
 
-        this.timerEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const last = this._findLastSmoked();
-            if (!last) return;
+        // Bind popover click listeners only once
+        if (!this._timerClickBound) {
+            this._timerClickBound = true;
 
-            if (this.popoverEl.style.display === 'block') {
+            this.timerEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const last = this._findLastSmoked();
+                if (!last) return;
+
+                if (this.popoverEl.style.display === 'block') {
+                    this.popoverEl.style.display = 'none';
+                    return;
+                }
+
+                const ms = Date.now() - last.getTime();
+                this.popoverEl.textContent = `Exactly: ${this._formatExactDuration(ms)}`;
+                this.popoverEl.style.display = 'block';
+            });
+
+            document.addEventListener('click', () => {
                 this.popoverEl.style.display = 'none';
-                return;
-            }
-
-            const ms = Date.now() - last.getTime();
-            this.popoverEl.textContent = `Exactly: ${this._formatExactDuration(ms)}`;
-            this.popoverEl.style.display = 'block';
-        });
-
-        document.addEventListener('click', () => {
-            this.popoverEl.style.display = 'none';
-        });
+            });
+        }
     }
 
     // ── README modal ──────────────────────────────────────────────────────────
