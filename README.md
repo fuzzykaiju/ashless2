@@ -1,4 +1,4 @@
-# Ashless v2.8 – Quit Smoking Tracker
+# Ashless v2.9 – Quit Smoking Tracker
 
 A **progressive web app** (PWA) to help you track cravings, cigarettes, and progress on your journey to becoming smoke‑free.  
 Everything is **fully client‑side** — your data stays in your browser, never sent anywhere.
