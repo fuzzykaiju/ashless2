@@ -262,6 +262,24 @@ class AshlessTracker {
                 }
             }
         });
+
+        // Header cell tooltips — tap to show on touch devices
+        this._tooltipTimer = null;
+        document.querySelectorAll('.header-cell').forEach(cell => {
+            cell.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.header-cell').forEach(c => c.classList.remove('tooltip-visible'));
+                clearTimeout(this._tooltipTimer);
+                cell.classList.add('tooltip-visible');
+                this._tooltipTimer = setTimeout(() => cell.classList.remove('tooltip-visible'), 1500);
+            }, { passive: false });
+        });
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('.header-cell')) {
+                document.querySelectorAll('.header-cell').forEach(c => c.classList.remove('tooltip-visible'));
+                clearTimeout(this._tooltipTimer);
+            }
+        }, { passive: true });
     }
 
     // ── Boot / setup flow ─────────────────────────────────────────────────────

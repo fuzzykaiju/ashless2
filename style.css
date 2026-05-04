@@ -170,6 +170,10 @@ body {
     }
 }
 
+.header-cell.tooltip-visible::after {
+    opacity: 1;
+}
+
 /* Main Content */
 .main-content {
     max-width: 100%;
