@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ashless-v9';
+const CACHE_NAME = 'ashless-v10';
 const ASSETS = [
   './index.html',
   './script.js',
@@ -14,7 +14,6 @@ const ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // Cache local assets reliably; external CDN assets best-effort
       return cache.addAll(['./index.html', './script.js', './style.css', './manifest.json'])
         .then(() => {
           return Promise.allSettled(
@@ -43,14 +42,12 @@ self.addEventListener('fetch', event => {
     caches.match(event.request).then(cached => {
       if (cached) return cached;
       return fetch(event.request).then(response => {
-        // Cache successful GET responses
         if (event.request.method === 'GET' && response.status === 200) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         }
         return response;
       }).catch(() => {
-        // If offline and not cached, return a simple offline page for navigation requests
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }

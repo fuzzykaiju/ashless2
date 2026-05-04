@@ -6,8 +6,8 @@
   "start_url": "/ashless2/index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "background_color": "#262626",
+  "theme_color": "#262626",
   "icons": [
     {
       "src": "icon-192.png",

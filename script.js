@@ -490,9 +490,9 @@ class AshlessTracker {
             const row = document.createElement('div');
             row.className = `entry-row${isSkipped ? ' entry-skipped' : ''}`;
 
-            // Info button: ⚠️ for unacknowledged skipped days, 𝒊 otherwise
+            // Info button: ⚠️ for unacknowledged skipped days, ↓ otherwise
             const infoBtn = isSkipped
-                ? `<button class="info-btn skipped-btn" data-date="${entry.date}"><i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-color);"></i></button>`
+                ? `<button class="info-btn skipped-btn" data-date="${entry.date}"><i class="fa-solid fa-triangle-exclamation"></i></button>`
                 : `<button class="info-btn" data-date="${entry.date}"><i class="fa-solid fa-angle-down"></i></button>`;
 
             row.innerHTML = `
@@ -533,7 +533,7 @@ class AshlessTracker {
             <p>• Tap <i class="fa-solid fa-face-tired"></i> or <i class="fa-solid fa-smoking"></i> in a row to log a craving or cigarette</p>
             <p>• Tap <i class="fa-solid fa-angle-down"></i> to view the day's timeline &amp; notes</p>
             <p>• Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</p>
-            <p>• Tap <i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-color);"></i> on skipped days to acknowledge them</p>`;
+            <p>• Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days to acknowledge them</p>`;
         this.entriesTable.appendChild(help);
 
         // Row event listeners
@@ -667,15 +667,12 @@ class AshlessTracker {
 
     // ── Time input handling ───────────────────────────────────────────────────
 
-    // Attach input + blur listeners to an HH/MM pair.
-    // onChange is called after every change so callers can update their save button.
     _bindTimeInputs(hhInput, mmInput, onChange) {
         const onInput = (e) => {
             let v = e.target.value.replace(/\D/g, '').slice(0, 2);
             if (e.target === hhInput && v.length === 2 && parseInt(v) > 23) v = '23';
             if (e.target === mmInput && v.length === 2 && parseInt(v) > 59) v = '59';
             e.target.value = v;
-            // Auto-advance HH → MM after 2 digits
             if (v.length === 2 && e.target === hhInput) { mmInput.focus(); mmInput.select(); }
             onChange();
         };
@@ -690,7 +687,6 @@ class AshlessTracker {
         mmInput.addEventListener('blur',  onBlur);
     }
 
-    // Returns true and clears invalid class if HH:MM is a valid time.
     _timeOk(hhInput, mmInput) {
         const hh = parseInt(hhInput.value);
         const mm = parseInt(mmInput.value);
@@ -721,7 +717,11 @@ class AshlessTracker {
         const entry = this._getEntry(date);
         if (!entry) { this._toast('Entry not found'); return; }
 
-        const intensityColor = { low: 'var(--low-intensity)', medium: 'var(--medium-intensity)', high: 'var(--high-intensity)' };
+        const intensityColor = {
+            low:    'var(--low-intensity)',
+            medium: 'var(--medium-intensity)',
+            high:   'var(--high-intensity)'
+        };
         const events = [
             ...entry.cravings.map(c => ({ time: c.time, type: 'craving', intensity: c.intensity,
                 text: `Craving (${c.intensity})` })),
@@ -800,7 +800,6 @@ class AshlessTracker {
             </div>`;
         const hhInput = el.querySelector('.edit-hh');
         const mmInput = el.querySelector('.edit-mm');
-        // No save-button update needed for edit rows — just bind the inputs
         this._bindTimeInputs(hhInput, mmInput, () => {});
         el.querySelectorAll('.edit-intensity-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -917,7 +916,6 @@ class AshlessTracker {
 
         this.entries[entryIdx].cravings = cravings;
         this.entries[entryIdx].smoked   = smoked;
-        // Clear skipped flag if entries were added
         if ((cravings.length || smoked.length) && this.entries[entryIdx].skipped) {
             this.entries[entryIdx].skipped = false;
         }
@@ -930,19 +928,16 @@ class AshlessTracker {
 
     // ── Chart ─────────────────────────────────────────────────────────────────
 
-    // Shared chart style constants
     _chartStyle() {
-        const s = getComputedStyle(document.documentElement);
         return {
-            textPrimary: s.getPropertyValue('--text-primary').trim()   || '#e0e0e0',
-            textSecond:  s.getPropertyValue('--text-secondary').trim() || '#888888',
-            accent:      s.getPropertyValue('--accent-color').trim()   || '#e07030',
-            gridColor:   'rgba(255,255,255,0.07)',
+            textPrimary: '#d9d9d9',
+            textSecond:  '#a6a6a6',
+            accent:      '#d9d9d9',
+            gridColor:   'rgba(217,217,217,0.07)',
             font:        'Consolas, Monaco, monospace',
         };
     }
 
-    // Get filtered + sorted entries for the selected time range, update stats
     _filteredEntries() {
         const days   = parseInt(this.timeRange.value);
         const now    = new Date();
@@ -953,7 +948,6 @@ class AshlessTracker {
             .filter(e => { const d = this._toDate(e.date); return d >= cutoff && d <= now; })
             .sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
 
-        // Update stats
         const totalSmoked   = filtered.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
         const totalCravings = filtered.reduce((s, e) => s + e.cravings.length, 0);
         const totalMoney    = filtered.reduce((s, e) => s + e.smoked.reduce((x, y) =>
@@ -983,7 +977,6 @@ class AshlessTracker {
         if (this.activeTab === 'intensity') this._renderChartIntensity();
     }
 
-    // ── Tab 1: Smoked — simple orange line chart
     _renderChartSmoked() {
         const filtered = this._filteredEntries();
         const st = this._chartStyle();
@@ -998,9 +991,9 @@ class AshlessTracker {
                     datasets: [{
                         label: 'Cigarettes Smoked',
                         data: filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0)),
-                        borderColor: '#e07030',
-                        backgroundColor: 'rgba(224,112,48,0.08)',
-                        pointBackgroundColor: '#e07030',
+                        borderColor: '#c8c8c8',
+                        backgroundColor: 'rgba(200,200,200,0.07)',
+                        pointBackgroundColor: '#c8c8c8',
                         pointRadius: 3,
                         pointHoverRadius: 5,
                         borderWidth: 1.5,
@@ -1013,7 +1006,6 @@ class AshlessTracker {
         );
     }
 
-    // ── Tab 2: Cravings — simple line chart
     _renderChartCravings() {
         const filtered = this._filteredEntries();
         const st = this._chartStyle();
@@ -1028,9 +1020,9 @@ class AshlessTracker {
                     datasets: [{
                         label: 'Cravings',
                         data: filtered.map(e => e.cravings.length),
-                        borderColor: '#5090d0',
-                        backgroundColor: 'rgba(80,144,208,0.08)',
-                        pointBackgroundColor: '#5090d0',
+                        borderColor: '#909090',
+                        backgroundColor: 'rgba(144,144,144,0.07)',
+                        pointBackgroundColor: '#909090',
                         pointRadius: 3,
                         pointHoverRadius: 5,
                         borderWidth: 1.5,
@@ -1043,7 +1035,6 @@ class AshlessTracker {
         );
     }
 
-    // ── Tab 3: Intensity — stacked bar (low / medium / high counts per day)
     _renderChartIntensity() {
         const filtered = this._filteredEntries();
         const st = this._chartStyle();
@@ -1063,24 +1054,24 @@ class AshlessTracker {
                         {
                             label: 'Low',
                             data: low,
-                            backgroundColor: 'rgba(76,175,80,0.85)',
-                            borderColor: '#4caf50',
+                            backgroundColor: 'rgba(198,224,180,0.85)',
+                            borderColor: '#C6E0B4',
                             borderWidth: 1,
                             borderRadius: 2,
                         },
                         {
                             label: 'Medium',
                             data: medium,
-                            backgroundColor: 'rgba(255,152,0,0.85)',
-                            borderColor: '#ff9800',
+                            backgroundColor: 'rgba(255,230,153,0.85)',
+                            borderColor: '#FFE699',
                             borderWidth: 1,
                             borderRadius: 2,
                         },
                         {
                             label: 'High',
                             data: high,
-                            backgroundColor: 'rgba(244,67,54,0.85)',
-                            borderColor: '#f44336',
+                            backgroundColor: 'rgba(255,149,149,0.85)',
+                            borderColor: '#FF9595',
                             borderWidth: 1,
                             borderRadius: 2,
                         },
@@ -1091,7 +1082,6 @@ class AshlessTracker {
         );
     }
 
-    // Shared Chart.js options factory
     _chartOptions(st, { stacked = false, tooltipExtra = null } = {}) {
         return {
             responsive: true,
@@ -1108,10 +1098,10 @@ class AshlessTracker {
                     },
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(20,20,20,0.92)',
-                    titleColor: st.accent,
+                    backgroundColor: 'rgba(26,26,26,0.95)',
+                    titleColor: st.textPrimary,
                     bodyColor: st.textPrimary,
-                    borderColor: st.accent,
+                    borderColor: 'rgba(217,217,217,0.25)',
                     borderWidth: 1,
                     cornerRadius: 6,
                     callbacks: tooltipExtra ? {
@@ -1249,13 +1239,10 @@ class AshlessTracker {
 
     // ── Last-smoked timer ─────────────────────────────────────────────────────
 
-    // Find the most recent smoked event across all entries.
-    // Returns a JS Date or null if nothing smoked yet.
     _findLastSmoked() {
         let latest = null;
         this.entries.forEach(entry => {
             entry.smoked.forEach(s => {
-                // Parse date + time into a real timestamp
                 const [d, m, y] = entry.date.split('-').map(Number);
                 const [hh, mm]  = s.time.split(':').map(Number);
                 const dt = new Date(2000 + y, m - 1, d, hh, mm, 0);
@@ -1265,7 +1252,6 @@ class AshlessTracker {
         return latest;
     }
 
-    // Convert ms elapsed → friendly rounded label
     _formatTimerLabel(ms) {
         const totalMin  = Math.floor(ms / 60000);
         const totalHrs  = Math.floor(ms / 3600000);
@@ -1283,7 +1269,6 @@ class AshlessTracker {
         return `Last smoked about ${totalYrs} year${totalYrs > 1 ? 's' : ''} ago`;
     }
 
-    // Convert ms elapsed → precise breakdown string for the popover
     _formatExactDuration(ms) {
         const totalSec  = Math.floor(ms / 1000);
         const totalMin  = Math.floor(totalSec / 60);
@@ -1307,7 +1292,6 @@ class AshlessTracker {
     }
 
     _startTimer() {
-        // Clear any existing interval
         clearInterval(this._timerInterval);
 
         const tick = () => {
@@ -1322,10 +1306,9 @@ class AshlessTracker {
             this.timerEl.classList.add('timer-tappable');
         };
 
-        tick(); // Run immediately
-        this._timerInterval = setInterval(tick, 60000); // Update every minute
+        tick();
+        this._timerInterval = setInterval(tick, 60000);
 
-        // Tap listener — show/hide popover
         this.timerEl.addEventListener('click', (e) => {
             e.stopPropagation();
             const last = this._findLastSmoked();
@@ -1341,7 +1324,6 @@ class AshlessTracker {
             this.popoverEl.style.display = 'block';
         });
 
-        // Dismiss popover on tap anywhere else
         document.addEventListener('click', () => {
             this.popoverEl.style.display = 'none';
         });
@@ -1376,7 +1358,7 @@ class AshlessTracker {
                 <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
                 <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
                 <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
-                <li>Tap <i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-color);"></i> on skipped days to acknowledge them</li>
+                <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days to acknowledge them</li>
                 <li>Open the side menu ☰ for charts, export/import, and settings</li>
             </ul>
 
@@ -1389,7 +1371,7 @@ class AshlessTracker {
             </ul>
 
             <p class="motivation">"Every craving you resist brings you closer to freedom."</p>
-            <div class="version">v2.9 · <a href="https://github.com/fuzzykaiju/ashless2" target="_blank" rel="noopener" style="color:var(--accent-color);">GitHub</a> · MIT License</div>
+            <div class="version">v2.9.1 · <a href="https://github.com/fuzzykaiju/ashless2" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
         `;
         this._openModal('readme');
     }
@@ -1407,7 +1389,6 @@ class AshlessTracker {
         }, ms);
     }
 
-    // Keep showToast as a public alias so any existing calls still work
     showToast(msg, ms) { this._toast(msg, ms); }
 
     _confirm(title, message, onConfirm) {
