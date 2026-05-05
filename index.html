@@ -127,15 +127,15 @@
                     <label>Craving Intensity:</label>
                     <div class="intensity-selector">
                         <button class="intensity-btn low" data-intensity="low">
-                            <span class="intensity-emoji">🟢</span>
+                            <i class="fa-solid fa-circle" style="color:var(--low-intensity);"></i>
                             <span class="intensity-label">Low</span>
                         </button>
                         <button class="intensity-btn medium" data-intensity="medium">
-                            <span class="intensity-emoji">🟡</span>
-                            <span class="intensity-label">Medium</span>
+                            <i class="fa-solid fa-circle" style="color:var(--medium-intensity);"></i>
+                            <span class="intensity-label">Mid</span>
                         </button>
                         <button class="intensity-btn high" data-intensity="high">
-                            <span class="intensity-emoji">🔴</span>
+                            <i class="fa-solid fa-circle" style="color:var(--high-intensity);"></i>
                             <span class="intensity-label">High</span>
                         </button>
                     </div>
@@ -225,6 +225,7 @@
                     </div>
                 </div>
                 <div class="form-actions">
+                    <button id="cancelEditDay" class="btn btn-ghost">Cancel</button>
                     <button id="saveEditDay" class="btn btn-primary">Save Changes</button>
                 </div>
             </div>

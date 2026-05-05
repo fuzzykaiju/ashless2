@@ -214,6 +214,8 @@ class AshlessTracker {
         // Edit-day modal
         document.querySelector('.close-edit').addEventListener('click',
             () => this._closeModal('editDay'));
+        document.getElementById('cancelEditDay').addEventListener('click',
+            () => this._closeModal('editDay'));
         document.getElementById('addCravingEdit').addEventListener('click',
             () => this._addEmptyCravingRow());
         document.getElementById('addSmokeEdit').addEventListener('click',
@@ -742,7 +744,7 @@ class AshlessTracker {
         };
         const events = [
             ...entry.cravings.map(c => ({ time: c.time, type: 'craving', intensity: c.intensity,
-                text: `Craving (${c.intensity})` })),
+                text: `Craving (${c.intensity === 'medium' ? 'mid' : c.intensity})` })),
             ...entry.smoked.map(s => ({ time: s.time, type: 'smoke',
                 text: `Smoked (${s.count} cigarette${s.count !== 1 ? 's' : ''})` })),
         ].sort((a, b) => this._byTimeAsc(a, b));
@@ -812,9 +814,9 @@ class AshlessTracker {
                 <input type="text" inputmode="numeric" class="edit-mm" value="${mm}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-intensity-selector">
-                <button class="edit-intensity-btn low    ${craving.intensity === 'low'    ? 'selected' : ''}" data-intensity="low">Low</button>
-                <button class="edit-intensity-btn medium ${craving.intensity === 'medium' ? 'selected' : ''}" data-intensity="medium">Mid</button>
-                <button class="edit-intensity-btn high   ${craving.intensity === 'high'   ? 'selected' : ''}" data-intensity="high">High</button>
+                <button class="edit-intensity-btn low    ${craving.intensity === 'low'    ? 'selected' : ''}" data-intensity="low">L</button>
+                <button class="edit-intensity-btn medium ${craving.intensity === 'medium' ? 'selected' : ''}" data-intensity="medium">M</button>
+                <button class="edit-intensity-btn high   ${craving.intensity === 'high'   ? 'selected' : ''}" data-intensity="high">H</button>
             </div>`;
         const hhInput = el.querySelector('.edit-hh');
         const mmInput = el.querySelector('.edit-mm');
@@ -905,6 +907,22 @@ class AshlessTracker {
         const entryIdx = this._getEntryIdx(this.activeDate);
         if (entryIdx === -1) return;
         const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+        // Validate all rows first — block save if any time is missing or invalid
+        const allItems = [
+            ...this.cravingsList.querySelectorAll('.edit-item'),
+            ...this.smokedList.querySelectorAll('.edit-item'),
+        ];
+        for (const item of allItems) {
+            const hh = item.querySelector('.edit-hh').value.padStart(2, '0');
+            const mm = item.querySelector('.edit-mm').value.padStart(2, '0');
+            if (!TIME_RE.test(`${hh}:${mm}`)) {
+                this._toast('Fix missing or invalid times before saving.');
+                item.querySelector('.edit-hh').classList.add('invalid');
+                item.querySelector('.edit-mm').classList.add('invalid');
+                return;
+            }
+        }
 
         const cravings = [];
         this.cravingsList.querySelectorAll('.edit-item').forEach(item => {
