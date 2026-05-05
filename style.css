@@ -988,7 +988,12 @@ input[type="number"] {
     font-size: 0.9rem;
     transition: filter 0.2s;
     font-family: inherit;
+    color: var(--text-secondary);
 }
+
+.edit-intensity-btn.low   { color: var(--low-intensity); }
+.edit-intensity-btn.medium { color: var(--medium-intensity); }
+.edit-intensity-btn.high  { color: var(--high-intensity); }
 
 .edit-intensity-btn:hover {
     filter: brightness(1.15);
@@ -1034,46 +1039,15 @@ input[type="number"] {
 
 .edit-actions {
     display: flex;
-    justify-content: space-between;
     gap: 10px;
 }
 
-/* Edit modal action buttons */
-#addCravingEdit, #addSmokeEdit {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid rgba(217, 217, 217, 0.35);
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-family: inherit;
+.edit-actions .btn {
+    flex: 1;
+    padding: 8px 10px;
     font-size: 0.9rem;
-    cursor: pointer;
-    transition: filter 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
 }
-#addCravingEdit:hover, #addSmokeEdit:hover { filter: brightness(1.15); }
 
-#deleteSelectedCravings, #deleteSelectedSmoked {
-    background-color: var(--bg-secondary);
-    color: var(--red);
-    border: 1px solid rgba(255, 149, 149, 0.4);
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: filter 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: bold;
-}
-#deleteSelectedCravings:disabled, #deleteSelectedSmoked:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
 #deleteSelectedCravings:hover:not(:disabled),
 #deleteSelectedSmoked:hover:not(:disabled) { filter: brightness(1.15); }
 
