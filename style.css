@@ -1032,6 +1032,13 @@ input[type="number"] {
     gap: 5px;
 }
 
+.count-separator {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    padding: 0 6px;
+    user-select: none;
+}
+
 .edit-count-input input {
     width: 50px;
     text-align: center;

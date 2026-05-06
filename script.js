@@ -193,18 +193,6 @@ class AshlessTracker {
             this._updateSaveBtn('smoke');
         });
 
-        // Number +/− buttons (static in HTML)
-        document.querySelectorAll('.number-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const b     = e.target.closest('.number-btn');
-                const input = document.getElementById(b.dataset.target);
-                if (!input) return;
-                const v = parseInt(input.value) || 0;
-                input.value = b.classList.contains('plus') ? v + 1 : Math.max(1, v - 1);
-                if (b.dataset.target === 'cigaretteCount') this._updateSaveBtn('smoke');
-            });
-        });
-
         // Info modal
         document.querySelector('.close-info').addEventListener('click',
             () => this._closeModal('info'));
@@ -844,20 +832,12 @@ class AshlessTracker {
                 <input type="text" inputmode="numeric" class="edit-mm" value="${mm}" maxlength="2" placeholder="MM">
             </div>
             <div class="edit-count-input">
-                <button type="button" class="number-btn minus small">−</button>
+                <span class="count-separator">×</span>
                 <input type="number" class="edit-count" value="${smoke.count || 1}" min="1">
-                <button type="button" class="number-btn plus small">+</button>
             </div>`;
-        const hhInput    = el.querySelector('.edit-hh');
-        const mmInput    = el.querySelector('.edit-mm');
-        const countInput = el.querySelector('.edit-count');
+        const hhInput = el.querySelector('.edit-hh');
+        const mmInput = el.querySelector('.edit-mm');
         this._bindTimeInputs(hhInput, mmInput, () => {});
-        el.querySelector('.minus').addEventListener('click', () => {
-            countInput.value = Math.max(1, (parseInt(countInput.value) || 1) - 1);
-        });
-        el.querySelector('.plus').addEventListener('click', () => {
-            countInput.value = (parseInt(countInput.value) || 1) + 1;
-        });
         el.querySelector('.edit-checkbox').addEventListener('change', () => this._syncDeleteBtns());
         return el;
     }
@@ -908,21 +888,52 @@ class AshlessTracker {
         if (entryIdx === -1) return;
         const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
-        // Validate all rows first — block save if any time is missing or invalid
-        const allItems = [
-            ...this.cravingsList.querySelectorAll('.edit-item'),
-            ...this.smokedList.querySelectorAll('.edit-item'),
-        ];
-        for (const item of allItems) {
-            const hh = item.querySelector('.edit-hh').value.padStart(2, '0');
-            const mm = item.querySelector('.edit-mm').value.padStart(2, '0');
-            if (!TIME_RE.test(`${hh}:${mm}`)) {
-                this._toast('Fix missing or invalid times before saving.');
+        // Collect all issues across all rows
+        let missingCT = false; // craving time
+        let missingCI = false; // craving intensity
+        let missingST = false; // smoke time
+        let missingSQ = false; // smoke quantity
+
+        this.cravingsList.querySelectorAll('.edit-item').forEach(item => {
+            const hhRaw = item.querySelector('.edit-hh').value.trim();
+            const mmRaw = item.querySelector('.edit-mm').value.trim();
+            const validTime = hhRaw && mmRaw && TIME_RE.test(`${hhRaw.padStart(2,'0')}:${mmRaw.padStart(2,'0')}`);
+            if (!validTime) {
+                missingCT = true;
                 item.querySelector('.edit-hh').classList.add('invalid');
                 item.querySelector('.edit-mm').classList.add('invalid');
-                return;
             }
+            if (!item.querySelector('.edit-intensity-btn.selected')) {
+                missingCI = true;
+            }
+        });
+
+        this.smokedList.querySelectorAll('.edit-item').forEach(item => {
+            const hhRaw = item.querySelector('.edit-hh').value.trim();
+            const mmRaw = item.querySelector('.edit-mm').value.trim();
+            const validTime = hhRaw && mmRaw && TIME_RE.test(`${hhRaw.padStart(2,'0')}:${mmRaw.padStart(2,'0')}`);
+            if (!validTime) {
+                missingST = true;
+                item.querySelector('.edit-hh').classList.add('invalid');
+                item.querySelector('.edit-mm').classList.add('invalid');
+            }
+            const countVal = item.querySelector('.edit-count').value.trim();
+            const count = parseInt(countVal);
+            if (!countVal || isNaN(count) || count < 1) {
+                missingSQ = true;
+                item.querySelector('.edit-count').classList.add('invalid');
+            }
+        });
+
+        const issueCount = [missingCT, missingCI, missingST, missingSQ].filter(Boolean).length;
+        if (issueCount > 1) {
+            this._toast('Multiple fields missing or invalid.');
+            return;
         }
+        if (missingCT) { this._toast('Please enter time for all cravings.'); return; }
+        if (missingCI) { this._toast('Please select intensity for all cravings.'); return; }
+        if (missingST) { this._toast('Please enter time for all smoke entries.'); return; }
+        if (missingSQ) { this._toast('Cigarettes smoked cannot be less than 1.'); return; }
 
         const cravings = [];
         this.cravingsList.querySelectorAll('.edit-item').forEach(item => {
