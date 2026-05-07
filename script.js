@@ -730,27 +730,58 @@ class AshlessTracker {
             medium: 'var(--medium-intensity)',
             high:   'var(--high-intensity)'
         };
-        const events = [
-            ...entry.cravings.map(c => ({ time: c.time, type: 'craving', intensity: c.intensity,
-                text: `Craving (${c.intensity === 'medium' ? 'mid' : c.intensity})` })),
-            ...entry.smoked.map(s => ({ time: s.time, type: 'smoke',
-                text: `Smoked (${s.count} cigarette${s.count !== 1 ? 's' : ''})` })),
-        ].sort((a, b) => this._byTimeAsc(a, b));
+
+        // Helper: format interval in minutes to compact string
+        const fmtInterval = (mins) => {
+            if (mins < 1)  return '<1m';
+            if (mins < 60) return `+${mins}m`;
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `+${h}h${m ? ' ' + m + 'm' : ''}`;
+        };
+
+        // Build craving events with intra-day intervals
+        let lastCravingMin = null;
+        const cravingEvents = [...entry.cravings]
+            .sort((a, b) => this._byTimeAsc(a, b))
+            .map(c => {
+                const [hh, mm] = c.time.split(':').map(Number);
+                const totalMin = hh * 60 + mm;
+                const interval = lastCravingMin === null ? '—' : fmtInterval(totalMin - lastCravingMin);
+                lastCravingMin = totalMin;
+                return { time: c.time, type: 'craving', intensity: c.intensity, interval };
+            });
+
+        // Build smoke events with intra-day intervals
+        let lastSmokeMin = null;
+        const smokeEvents = [...entry.smoked]
+            .sort((a, b) => this._byTimeAsc(a, b))
+            .map(s => {
+                const [hh, mm] = s.time.split(':').map(Number);
+                const totalMin = hh * 60 + mm;
+                const interval = lastSmokeMin === null ? '—' : fmtInterval(totalMin - lastSmokeMin);
+                lastSmokeMin = totalMin;
+                return { time: s.time, type: 'smoke', interval };
+            });
+
+        const events = [...cravingEvents, ...smokeEvents]
+            .sort((a, b) => this._byTimeAsc(a, b));
 
         if (!events.length) {
             this.timelineContent.innerHTML = '<p class="empty-timeline">No events recorded for this day.</p>';
         } else {
             this.timelineContent.innerHTML = '';
             events.forEach(ev => {
-                const el  = document.createElement('div');
+                const el = document.createElement('div');
                 el.className = 'timeline-entry';
-                const dot = ev.type === 'craving'
+                const indicator = ev.type === 'craving'
                     ? `<span class="timeline-intensity" style="background-color:${intensityColor[ev.intensity]}"></span>`
-                    : '';
+                    : `<span class="timeline-skull"><i class="fa-solid fa-skull"></i></span>`;
                 el.innerHTML = `
                     <span class="timeline-time">${ev.time}</span>
                     <span class="timeline-emoji">${ev.type === 'craving' ? '<i class="fa-solid fa-face-tired"></i>' : '<i class="fa-solid fa-smoking"></i>'}</span>
-                    <span class="timeline-text">${ev.text}</span>${dot}`;
+                    <span class="timeline-interval">${ev.interval}</span>
+                    ${indicator}`;
                 this.timelineContent.appendChild(el);
             });
         }
@@ -1300,20 +1331,41 @@ class AshlessTracker {
     }
 
     _formatTimerLabel(ms) {
-        const totalMin  = Math.floor(ms / 60000);
-        const totalHrs  = Math.floor(ms / 3600000);
-        const totalDays = Math.floor(ms / 86400000);
+        const totalSec  = Math.floor(ms / 1000);
+        const totalMin  = Math.floor(totalSec / 60);
+        const totalHrs  = Math.floor(totalMin / 60);
+        const totalDays = Math.floor(totalHrs / 24);
         const totalWks  = Math.floor(totalDays / 7);
-        const totalMths = Math.floor(totalDays / 30.44);
+        const totalMos  = Math.floor(totalDays / 30.44);
         const totalYrs  = Math.floor(totalDays / 365.25);
 
-        if (totalMin  < 1)   return 'Last smoked just now';
-        if (totalMin  < 60)  return `Last smoked about ${totalMin} min ago`;
-        if (totalHrs  < 24)  return `Last smoked about ${totalHrs} hr${totalHrs > 1 ? 's' : ''} ago`;
-        if (totalDays < 7)   return `Last smoked about ${totalDays} day${totalDays > 1 ? 's' : ''} ago`;
-        if (totalWks  < 4)   return `Last smoked about ${totalWks} week${totalWks > 1 ? 's' : ''} ago`;
-        if (totalMths < 12)  return `Last smoked about ${totalMths} month${totalMths > 1 ? 's' : ''} ago`;
-        return `Last smoked about ${totalYrs} year${totalYrs > 1 ? 's' : ''} ago`;
+        const b = (t) => `<strong>${t}</strong>`;
+
+        if (totalSec < 60) {
+            return `Last smoked ${b(totalSec + ' s')} ago`;
+        }
+        if (totalMin < 60) {
+            const s = totalSec % 60;
+            return `Last smoked ${b(totalMin + ' min' + (s ? ' ' + s + ' s' : ''))} ago`;
+        }
+        if (totalHrs < 24) {
+            const min = totalMin % 60;
+            return `Last smoked ${b(totalHrs + ' hr' + (min ? ' ' + min + ' min' : ''))} ago`;
+        }
+        if (totalDays < 7) {
+            const hr = totalHrs % 24;
+            return `Last smoked ${b(totalDays + ' d' + (hr ? ' ' + hr + ' hr' : ''))} ago`;
+        }
+        if (totalWks < 4) {
+            const d = totalDays % 7;
+            return `Last smoked ${b(totalWks + ' wk' + (d ? ' ' + d + ' d' : ''))} ago`;
+        }
+        if (totalMos < 12) {
+            const wk = Math.floor((totalDays % 30.44) / 7);
+            return `Last smoked ${b(totalMos + ' mo' + (wk ? ' ' + wk + ' wk' : ''))} ago`;
+        }
+        const mo = totalMos % 12;
+        return `Last smoked ${b(totalYrs + ' yr' + (mo ? ' ' + mo + ' mo' : ''))} ago`;
     }
 
     _formatExactDuration(ms) {
@@ -1344,17 +1396,17 @@ class AshlessTracker {
         const tick = () => {
             const last = this._findLastSmoked();
             if (!last) {
-                this.timerEl.textContent = 'No cigarettes logged yet';
+                this.timerEl.innerHTML = 'No cigarettes logged yet';
                 this.timerEl.classList.remove('timer-tappable');
                 return;
             }
             const ms = Date.now() - last.getTime();
-            this.timerEl.textContent = this._formatTimerLabel(ms);
+            this.timerEl.innerHTML = this._formatTimerLabel(ms);
             this.timerEl.classList.add('timer-tappable');
         };
 
         tick();
-        this._timerInterval = setInterval(tick, 60000);
+        this._timerInterval = setInterval(tick, 1000);
 
         // Bind popover click listeners only once
         if (!this._timerClickBound) {

@@ -885,8 +885,20 @@ input[type="number"] {
     color: var(--text-primary);
 }
 
-.timeline-text {
+.timeline-interval {
     flex: 1;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.timeline-skull {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-left: 5px;
+}
+
+.timer-label strong {
+    font-weight: bold;
     color: var(--text-primary);
 }
 
