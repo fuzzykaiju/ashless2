@@ -889,6 +889,7 @@ input[type="number"] {
     flex: 1;
     color: var(--text-secondary);
     font-size: 0.85rem;
+    min-width: 50px;
 }
 
 .timeline-skull {

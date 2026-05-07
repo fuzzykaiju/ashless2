@@ -541,7 +541,8 @@ class AshlessTracker {
             <p>• Tap <i class="fa-solid fa-face-tired"></i> or <i class="fa-solid fa-smoking"></i> in a row to log a craving or cigarette</p>
             <p>• Tap <i class="fa-solid fa-angle-down"></i> to view the day's timeline &amp; notes</p>
             <p>• Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</p>
-            <p>• Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days to acknowledge them</p>`;
+            <p>• Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days for more actions</p>
+            <p style="margin-top:18px;"><i class="fa-solid fa-road-barrier" style="color:var(--yellow);font-size:1.3rem;"></i></p>`;
         this.entriesTable.appendChild(help);
 
         // Row event listeners
@@ -1377,15 +1378,17 @@ class AshlessTracker {
         const years  = Math.floor(totalDays / 365);
         const months = Math.floor((totalDays % 365) / 30);
         const days   = Math.floor((totalDays % 365) % 30);
-        const hrs    = totalHrs  % 24;
-        const mins   = totalMin  % 60;
+        const hrs    = totalHrs % 24;
+        const mins   = totalMin % 60;
+        const secs   = totalSec % 60;
 
         const parts = [];
-        if (years)  parts.push(`${years} yr${years  > 1 ? 's' : ''}`);
+        if (years)  parts.push(`${years} yr${years > 1 ? 's' : ''}`);
         if (months) parts.push(`${months} mo`);
-        if (days)   parts.push(`${days} day${days   > 1 ? 's' : ''}`);
-        if (hrs)    parts.push(`${hrs} hr${hrs    > 1 ? 's' : ''}`);
-        parts.push(`${mins} min`);
+        if (days)   parts.push(`${days} d`);
+        if (hrs)    parts.push(`${hrs} hr${hrs > 1 ? 's' : ''}`);
+        if (mins)   parts.push(`${mins} min`);
+        parts.push(`${secs} s`);
 
         return parts.join(', ');
     }
