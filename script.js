@@ -566,7 +566,7 @@ class AshlessTracker {
 
     _openAddCraving(date) {
         this.activeDate = date;
-        this.cravingTitle.textContent = `Add Craving — ${date}`;
+        this.cravingTitle.innerHTML = `Add Craving<br><span class="modal-subtitle">${date}</span>`;
         document.querySelectorAll('.intensity-btn, .time-btn').forEach(b => b.classList.remove('selected'));
         this.cravingHH.value = '';
         this.cravingMM.value = '';
@@ -603,7 +603,7 @@ class AshlessTracker {
 
     _openAddSmoke(date) {
         this.activeDate = date;
-        this.smokeTitle.textContent = `Log Cigarette — ${date}`;
+        this.smokeTitle.innerHTML = `Log Cigarette<br><span class="modal-subtitle">${date}</span>`;
         document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
         this.smokeHH.value = '';
         this.smokeMM.value = '';
@@ -721,7 +721,7 @@ class AshlessTracker {
 
     _openInfo(date) {
         this.activeDate = date;
-        this.infoTitle.textContent = `${date} — Timeline`;
+        this.infoTitle.innerHTML = `Timeline<br><span class="modal-subtitle">${date}</span>`;
         const entry = this._getEntry(date);
         if (!entry) { this._toast('Entry not found'); return; }
 
@@ -770,7 +770,7 @@ class AshlessTracker {
 
     _openEditDay(date) {
         this.activeDate = date;
-        this.editDayTitle.textContent = `Edit — ${date}`;
+        this.editDayTitle.innerHTML = `Edit<br><span class="modal-subtitle">${date}</span>`;
         const entry = this._getEntry(date);
         if (!entry) { this._toast('Entry not found'); return; }
         this._renderCravingRows(entry.cravings);
